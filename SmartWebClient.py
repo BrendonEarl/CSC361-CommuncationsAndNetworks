@@ -38,9 +38,9 @@ class SmartWebClient():
         if (self.sock != None):
             print("---Request begin---")
 
-            req = "{0} {1} {2}\r\n\r\n".format(method, uri, httpV)
+            req = "{} {} {}\r\n\r\n".format(method, uri, httpV)
             print(req.strip())
-            print("Host: {0}".format(uri))
+            print("Host: {}".format(uri))
             print("Connection: Keep-Alive")
             self.sock.send(req.encode())
 
