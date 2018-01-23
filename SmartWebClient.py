@@ -3,39 +3,40 @@ import socket
 from urllib.parse import urlparse, urlunparse
 
 class SmartWebClient():
-    def  __init__(self, uri):
+    def  __init__(self, url):
         self.sock = None
         self.scheme = None
         self.protocol = None
 
+        parsedURL = urlparse("//{}".format(url))
+
         print('Starting Smart Web Client\n')
-
         print('Looking for URL scheme\n')
-        self.openHttpSocket(uri)
-        self.findHttpProtocol(uri)
+        self.findHttpScheme(parsedURL)
+        self.findHttpProtocol(parsedURL)
 
 
-    def findHttpScheme(self, uri):
+    def findHttpScheme(self, parsedURL):
         print("-----Finding available HTTP scheme---")
-        self.httpSend("HEAD", uri, 'HTTP/1.1')
+        self.openHttpSocket(parsedURL.netloc, False)
+        # req = 
+        self.httpSend("HEAD", parsedURL.path, 'HTTP/1.1', parsedURL.netloc)
         resp = self.httpRecv()
         scheme = 'http'
 
 
-    def findHttpProtocol(self, uri):
+    def findHttpProtocol(self, parsedURL):
         print("-----Finding available HTTP protocol---")
-        self.httpSend("HEAD", uri, 'HTTP/1.1')
+        self.httpSend("HEAD", parsedURL.path, 'HTTP/1.1', parsedURL.netloc)
         resp = self.httpRecv()
 
 
-    def httpSend(self, method, uri, httpV):
+    def httpSend(self, method, path, httpV, host):
         if (self.sock != None):
             print("---Request begin---")
 
-            req = "{} {} {}\r\n\r\n".format(method, uri, httpV)
+            req = "{} {} {}\r\nHost: {}\r\nConnection: Keep-Alive\r\n\r\n".format(method, path if path != '' else "/", httpV, host)
             print(req.strip())
-            print("Host: {}".format(uri))
-            print("Connection: Keep-Alive")
             self.sock.send(req.encode())
 
             print("\n---Request end---")
@@ -62,6 +63,7 @@ class SmartWebClient():
         print("---Opening {} Socket on Port {}".format("HTTPS" if secure else "HTTP", 443 if secure else 80))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((uri, 80))
+        self.scheme = "HTTP"
 
     def closeHttpSocket(self):
         if (self.sock != None):
@@ -73,9 +75,10 @@ class SmartWebClient():
 
 if __name__ == "__main__":
     try:
-        # TODO: Add proper error handling of bad URIs
-        parsedURI = urlparse(sys.argv[1])
-        SmartWebClient(sys.argv[1])
+        if (sys.argv[1] == None):
+            print("No URL provided")
+        else:
+            SmartWebClient(sys.argv[1])
     except ValueError:
-        sys.stderr.write('Incorrect URI format. Try again')
+        sys.stderr.write('Incorrect URN format. Try again')
     
