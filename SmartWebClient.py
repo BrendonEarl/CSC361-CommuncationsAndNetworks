@@ -5,20 +5,31 @@ from urllib.parse import urlparse, urlunparse
 class SmartWebClient():
     def  __init__(self, parsedURI = {}):
         url = urlunparse(parsedURI)
-        sys.stdout.write('Starting Smart Web Client\n\n')
-        # open server socket
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((uri, 80))
-        self.findHttpScheme(uri)
+        print('Starting Smart Web Client\n')
 
-    def findHttpScheme(self, uri):
+        print('Looking for URL scheme\n')
+        self.sock, self.scheme = self.openHttpSocket(parseURI)
+        self.scheme = self.findHttpProtocol(uri)
+
+
+    def openHttpSocket(self, uri):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((uri, 80))
+
         print("-----Finding available HTTP scheme---")
         self.httpSend("HEAD", uri, 'HTTP/1.1')
         resp = self.httpRecv()
-    
-    def findHttpProtocol(sef, uri)
 
-    def httpSend(self, method, uri, httpV,):
+        return sock, scheme
+    
+
+    def findHttpProtocol(sef, uri):
+        print("-----Finding available HTTP protocol---")
+        self.httpSend("HEAD", uri, 'HTTP/1.1')
+        resp = self.httpRecv()
+
+
+    def httpSend(self, method, uri, httpV):
         print("---Request begin---")
 
         req = "{0} {1} {2}\r\n\r\n".format(method, uri, httpV)
@@ -29,6 +40,7 @@ class SmartWebClient():
 
         print("\n---Request end---")
         print("HTTP request sent, awaiting response...")
+        
         
     def httpRecv(self):
         data = self.sock.recv(1024).decode().split("\r\n\r\n")
