@@ -20,6 +20,13 @@ class SmartWebClient():
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((uri, 80))
 
+    def closeHttpSocket(self):
+        if (self.sock != None):
+            sock.close()
+            print("---Socket Closed---")
+        else:
+            print("---No Socket To Close")
+        
 
     def findHttpScheme(self, uri):
         print("-----Finding available HTTP scheme---")
