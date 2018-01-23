@@ -15,19 +15,6 @@ class SmartWebClient():
         self.findHttpProtocol(uri)
 
 
-    def openHttpSocket(self, uri, secure = False):
-        print("---Opening {} Socket on Port {}".format("HTTPS" if secure else "HTTP", 443 if secure else 80))
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((uri, 80))
-
-    def closeHttpSocket(self):
-        if (self.sock != None):
-            sock.close()
-            print("---Socket Closed---")
-        else:
-            print("---No Socket To Close")
-        
-
     def findHttpScheme(self, uri):
         print("-----Finding available HTTP scheme---")
         self.httpSend("HEAD", uri, 'HTTP/1.1')
@@ -69,6 +56,19 @@ class SmartWebClient():
         else:
             print("No Socket Initialized")
             return None
+
+
+    def openHttpSocket(self, uri, secure = False):
+        print("---Opening {} Socket on Port {}".format("HTTPS" if secure else "HTTP", 443 if secure else 80))
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.connect((uri, 80))
+
+    def closeHttpSocket(self):
+        if (self.sock != None):
+            sock.close()
+            print("---Socket Closed---")
+        else:
+            print("No Socket To Close")
 
 
 if __name__ == "__main__":
