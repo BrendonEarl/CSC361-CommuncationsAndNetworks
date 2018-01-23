@@ -4,26 +4,27 @@ from urllib.parse import urlparse, urlunparse
 
 class SmartWebClient():
     def  __init__(self, parsedURI = {}):
-        url = urlunparse(parsedURI)
+        uri = urlunparse(parsedURI)
         print('Starting Smart Web Client\n')
 
         print('Looking for URL scheme\n')
-        self.sock, self.scheme = self.openHttpSocket(parseURI)
+        self.sock, self.scheme = self.openHttpSocket(uri)
         self.scheme = self.findHttpProtocol(uri)
 
 
     def openHttpSocket(self, uri):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((uri, 80))
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.connect((uri, 80))
 
         print("-----Finding available HTTP scheme---")
         self.httpSend("HEAD", uri, 'HTTP/1.1')
         resp = self.httpRecv()
+        scheme = 'http'
 
-        return sock, scheme
+        return self.sock, scheme
     
 
-    def findHttpProtocol(sef, uri):
+    def findHttpProtocol(self, uri):
         print("-----Finding available HTTP protocol---")
         self.httpSend("HEAD", uri, 'HTTP/1.1')
         resp = self.httpRecv()
@@ -41,7 +42,7 @@ class SmartWebClient():
         print("\n---Request end---")
         print("HTTP request sent, awaiting response...")
         
-        
+
     def httpRecv(self):
         data = self.sock.recv(1024).decode().split("\r\n\r\n")
         print("\n---Response header---")
