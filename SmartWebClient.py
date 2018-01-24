@@ -5,10 +5,8 @@ from urllib.parse import urlparse, urlunparse
 class SmartWebClient():
     def  __init__(self, url):
         self.sock = None
-        self.scheme = None
         self.protocol = None
-
-        parsedURL = urlparse("//{}".format(url))
+        self.url = urlparse("//{}".format(url))
 
         print('Starting Smart Web Client\n')
         print('Looking for URL scheme\n')
@@ -28,7 +26,8 @@ class SmartWebClient():
         print("-----Finding available HTTP protocol---")
         self.httpSend("HEAD", parsedURL.path, 'HTTP/1.1', parsedURL.netloc)
         resp = self.httpRecv()
-        print(resp)
+        if (resp[0]['Status-Code'] == 200):
+            self.protocol = 'HTTP/1.1'
 
 
     def httpSend(self, method, path, httpV, host):
@@ -61,21 +60,21 @@ class SmartWebClient():
 
 
     def parseResponse(self, resp):
+        parsedResponse = {}
         header, body = resp.split("\r\n\r\n")
-        response = {}
         splitHeader = header.split('\r\n')
         httpV, status, reason = splitHeader[0].split(' ')
-        response.update({
+        parsedResponse.update({
             "HTTP-Version": httpV,
-            "Status-Code": status,
+            "Status-Code": int(status),
             "Reason-Phrase": reason
         })
         for attribute in splitHeader[1:]:
             splitAttribute = attribute.split(": ")
-            response.update({
+            parsedResponse.update({
                 splitAttribute[0]: splitAttribute[1]
             })
-        return (splitAttribute, body)        
+        return (parsedResponse, body)        
 
 
     def openHttpSocket(self, uri, secure = False):
@@ -99,6 +98,7 @@ if __name__ == "__main__":
             print("No URL provided")
         else:
             SmartWebClient(sys.argv[1])
-    except ValueError:
+    except ValueError as ve:
+        print(ve)
         sys.stderr.write('Incorrect URN format. Try again')
     
