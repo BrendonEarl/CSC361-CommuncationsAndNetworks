@@ -19,16 +19,16 @@ class SmartWebClient():
     def findHttpScheme(self, parsedURL):
         print("-----Finding available HTTP scheme---")
         self.openHttpSocket(parsedURL.netloc, False)
-        # req = 
         self.httpSend("HEAD", parsedURL.path, 'HTTP/1.1', parsedURL.netloc)
         resp = self.httpRecv()
-        scheme = 'http'
+        self.scheme = 'HTTP'
 
 
     def findHttpProtocol(self, parsedURL):
         print("-----Finding available HTTP protocol---")
         self.httpSend("HEAD", parsedURL.path, 'HTTP/1.1', parsedURL.netloc)
         resp = self.httpRecv()
+        print(resp)
 
 
     def httpSend(self, method, path, httpV, host):
@@ -47,14 +47,14 @@ class SmartWebClient():
 
     def httpRecv(self):
         if (self.sock != None):
-            data = self.sock.recv(1024).decode()
-            splitData = data.split("\r\n\r\n")
+            resp = self.sock.recv(1024).decode()
+            splitResp = resp.split("\r\n\r\n")
             print("\n---Response header---")
-            print(splitData[0])
-            if (len(splitData) > 1):
+            print(splitResp[0])
+            if (len(splitResp) > 1):
                 print("\n---Response body---")
-                print(splitData[1])
-            return(self.parseResponse(data))
+                print(splitResp[1])
+            return(self.parseResponse(resp))
         else:
             print("No Socket Initialized")
             return None
@@ -62,7 +62,6 @@ class SmartWebClient():
 
     def parseResponse(self, resp):
         header, body = resp.split("\r\n\r\n")
-        print('---parse response')
         response = {}
         splitHeader = header.split('\r\n')
         httpV, status, reason = splitHeader[0].split(' ')
@@ -76,10 +75,7 @@ class SmartWebClient():
             response.update({
                 splitAttribute[0]: splitAttribute[1]
             })
-
-        print("--responses")
-        print(response, body)
-        
+        return (splitAttribute, body)        
 
 
     def openHttpSocket(self, uri, secure = False):
@@ -87,6 +83,7 @@ class SmartWebClient():
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((uri, 80))
         self.scheme = "HTTP"
+
 
     def closeHttpSocket(self):
         if (self.sock != None):
