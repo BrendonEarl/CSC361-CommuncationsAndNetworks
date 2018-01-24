@@ -47,16 +47,39 @@ class SmartWebClient():
 
     def httpRecv(self):
         if (self.sock != None):
-            data = self.sock.recv(1024).decode().split("\r\n\r\n")
+            data = self.sock.recv(1024).decode()
+            splitData = data.split("\r\n\r\n")
             print("\n---Response header---")
-            print(data[0])
-            if (len(data) > 1):
+            print(splitData[0])
+            if (len(splitData) > 1):
                 print("\n---Response body---")
-                print(data[1])
-            return(data)
+                print(splitData[1])
+            return(self.parseResponse(data))
         else:
             print("No Socket Initialized")
             return None
+
+
+    def parseResponse(self, resp):
+        header, body = resp.split("\r\n\r\n")
+        print('---parse response')
+        response = {}
+        splitHeader = header.split('\r\n')
+        httpV, status, reason = splitHeader[0].split(' ')
+        response.update({
+            "HTTP-Version": httpV,
+            "Status-Code": status,
+            "Reason-Phrase": reason
+        })
+        for attribute in splitHeader[1:]:
+            splitAttribute = attribute.split(": ")
+            response.update({
+                splitAttribute[0]: splitAttribute[1]
+            })
+
+        print("--responses")
+        print(response, body)
+        
 
 
     def openHttpSocket(self, uri, secure = False):
