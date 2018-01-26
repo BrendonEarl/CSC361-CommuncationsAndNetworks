@@ -79,11 +79,11 @@ class SmartWebClient():
         parsedResponse = {}
         header, body = resp.split("\r\n\r\n")
         splitHeader = header.split('\r\n')
-        httpV, status, reason = splitHeader[0].split(' ')
+        statusTokens = splitHeader[0].split(' ')
         parsedResponse.update({
-            "HTTP-Version": httpV,
-            "Status-Code": int(status),
-            "Reason-Phrase": reason
+            "HTTP-Version": statusTokens[0],
+            "Status-Code": int(statusTokens[1]),
+            "Reason-Phrase": ''.join("{} ".format(token) for token in statusTokens[2:])
         })
         for attribute in splitHeader[1:]:
             splitAttribute = attribute.split(": ")
