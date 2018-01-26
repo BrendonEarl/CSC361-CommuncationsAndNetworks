@@ -1,4 +1,5 @@
 import sys
+import ssl
 import socket
 from urllib.parse import urlparse, urlunparse
 
@@ -10,15 +11,20 @@ class SmartWebClient():
 
         print('Starting Smart Web Client\n')
         print('Looking for URL scheme\n')
-        self.findHttpScheme(parsedURL)
-        self.findHttpProtocol(parsedURL)
+        self.findHttpScheme(self.url)
+        self.findHttpProtocol(self.url)
 
 
     def findHttpScheme(self, parsedURL):
         print("-----Finding available HTTP scheme---")
-        self.openHttpSocket(parsedURL.netloc, False)
+        self.openHttpSocket(parsedURL)
         self.httpSend("HEAD", parsedURL.path, 'HTTP/1.1', parsedURL.netloc)
         resp = self.httpRecv()
+        if(resp[0]['Status-Code'] == 302):
+            print('here')
+            self.url = urlparse(resp[0]['Location'])
+            if (self.url.scheme == None): self.url.scheme = 'http'
+            self.openHttpSocket(parsedURL)
         self.scheme = 'HTTP'
 
 
@@ -77,11 +83,21 @@ class SmartWebClient():
         return (parsedResponse, body)        
 
 
-    def openHttpSocket(self, uri, secure = False):
-        print("---Opening {} Socket on Port {}".format("HTTPS" if secure else "HTTP", 443 if secure else 80))
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((uri, 80))
-        self.scheme = "HTTP"
+    def openHttpSocket(self, parsedURL):
+        SCHEME = "HTTPS" if parsedURL.scheme == 'https' else "HTTP"
+        PORT = 443 if parsedURL.scheme == 'https' else 80
+        print("---Opening {} Socket on Port {}".format(SCHEME, PORT))
+
+        if (SCHEME == 'HTTPS'):
+            ctx = ssl.create_default_context()
+            ctx.set_alpn_protocols(['h2', 'spdy/3', 'http/1.1'])
+            self.sock = ctx.wrap_socket(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname=parsedURL.netloc
+            )
+        else:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        self.sock.connect((parsedURL.netloc, PORT))
 
 
     def closeHttpSocket(self):
