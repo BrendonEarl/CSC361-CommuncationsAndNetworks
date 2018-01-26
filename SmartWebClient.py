@@ -7,12 +7,14 @@ class SmartWebClient():
     def  __init__(self, url):
         self.sock = None
         self.protocol = None
+        self.cookies = None
         self.url = urlparse("//{}".format(url))
 
         print('Starting Smart Web Client\n')
         print('Looking for URL scheme\n')
-        self.findHttpScheme(self.url)
-        self.findHttpProtocol(self.url)
+        self.findHttpScheme()
+        self.findHttpProtocol()
+        self.reportSoln()
 
 
     def reportSoln(self):
@@ -27,23 +29,24 @@ class SmartWebClient():
 
     def findHttpScheme(self):
         print("-----Finding available HTTP scheme---")
-        self.openHttpSocket(parsedURL)
-        self.httpSend("HEAD", parsedURL.path, 'HTTP/1.1', parsedURL.netloc)
+        self.openHttpSocket(self.url)
+        self.httpSend("HEAD", self.url.path, 'HTTP/1.1', self.url.netloc)
         resp = self.httpRecv()
         if(resp[0]['Status-Code'] == 302):
-            print('here')
             self.url = urlparse(resp[0]['Location'])
-            if (self.url.scheme == None): self.url.scheme = 'http'
-            self.openHttpSocket(parsedURL)
-        self.scheme = 'HTTP'
+            if (self.url.scheme == ''): self.url.scheme = 'http'
+            self.closeHttpSocket()
+            self.findHttpScheme()
 
 
-    def findHttpProtocol(self, parsedURL):
+    def findHttpProtocol(self):
         print("-----Finding available HTTP protocol---")
-        self.httpSend("HEAD", parsedURL.path, 'HTTP/1.1', parsedURL.netloc)
+        self.httpSend("HEAD", self.url.path, 'HTTP/1.1', self.url.netloc)
         resp = self.httpRecv()
         if (resp[0]['Status-Code'] == 200):
             self.protocol = 'HTTP/1.1'
+            print(resp)
+            
 
 
     def httpSend(self, method, path, httpV, host):
@@ -112,7 +115,7 @@ class SmartWebClient():
 
     def closeHttpSocket(self):
         if (self.sock != None):
-            sock.close()
+            self.sock.close()
             print("---Socket Closed---")
         else:
             print("No Socket To Close")
@@ -126,5 +129,6 @@ if __name__ == "__main__":
             SmartWebClient(sys.argv[1])
     except ValueError as ve:
         print(ve)
+        raise ve
         sys.stderr.write('Incorrect URN format. Try again')
     
