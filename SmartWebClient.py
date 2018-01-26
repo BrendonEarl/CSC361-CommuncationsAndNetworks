@@ -15,7 +15,17 @@ class SmartWebClient():
         self.findHttpProtocol(self.url)
 
 
-    def findHttpScheme(self, parsedURL):
+    def reportSoln(self):
+        print("website: {}".format(self.url.netloc))
+        print("1. Support of HTTPS: {}".format("yes" if self.url.scheme == 'https' else "no"))
+        print("2. The newest HTTP versions that the server supports: {}".format(self.protocol))
+        print("3. List of Cookies:")
+        if self.cookies != None:
+            for cookie in self.cookies:
+                print("name: {}, key: {}, domain name: {}".format(cookie.name, cookie.key, cookie.domain))
+
+
+    def findHttpScheme(self):
         print("-----Finding available HTTP scheme---")
         self.openHttpSocket(parsedURL)
         self.httpSend("HEAD", parsedURL.path, 'HTTP/1.1', parsedURL.netloc)
