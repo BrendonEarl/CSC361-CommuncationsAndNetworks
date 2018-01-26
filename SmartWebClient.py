@@ -22,9 +22,13 @@ class SmartWebClient():
         print("1. Support of HTTPS: {}".format("yes" if self.url.scheme == 'https' else "no"))
         print("2. The newest HTTP versions that the server supports: {}".format(self.protocol))
         print("3. List of Cookies:")
-        # if self.cookies != None:
-        #     for cookie in self.cookies:
-        #         print("name: {}, key: {}, domain name: {}".format(cookie.name, cookie.key, cookie.domain))
+        if self.cookies != None:
+            for cookie in self.cookies:
+                print("name: {}, key: {}{}".format(
+                    cookie['name'],
+                    cookie['key'],
+                    ", domain name: {}".format(cookie['domain']) if cookie['domain'] != None else ""
+                ))
 
 
     def findHttpScheme(self):
@@ -98,6 +102,7 @@ class SmartWebClient():
                 crumbs = splitAttribute[1].split("; ")
                 name = crumbs[0].split('=')[0]
                 key = crumbs[0][len(name)+1:]
+                domain = None
                 for crumb in crumbs:
                     if ('domain' in crumb):
                         domain = crumb.split('=')[1]
