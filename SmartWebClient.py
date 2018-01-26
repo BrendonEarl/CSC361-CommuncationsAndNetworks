@@ -96,10 +96,15 @@ class SmartWebClient():
                 })
             else:
                 crumbs = splitAttribute[1].split("; ")
+                name = crumbs[0].split('=')[0]
+                key = crumbs[0][len(name)+1:]
+                for crumb in crumbs:
+                    if ('domain' in crumb):
+                        domain = crumb.split('=')[1]
                 cookie = {
-                    'name': crumbs[0].split('=')[0],
-                    'value': crumbs[0].split('=')[1],
-                    'domain': 'test'
+                    'name': name,
+                    'key':key,
+                    'domain': domain
                 }
                 self.cookies.append(cookie)
                 print(cookie)
