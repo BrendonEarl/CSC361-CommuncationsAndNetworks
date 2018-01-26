@@ -6,33 +6,33 @@ from urllib.parse import urlparse, urlunparse
 class SmartWebClient():
     def  __init__(self, url):
         self.sock = None
-        self.protocol = None
-        self.cookies = None
+        self.protocol = 'HTTP/2'
+        self.cookies = []
         self.url = urlparse("//{}".format(url))
 
         print('Starting Smart Web Client\n')
         print('Looking for URL scheme\n')
         self.findHttpScheme()
-        self.findHttpProtocol()
-        self.reportSoln()
+        resp = self.findHttpProtocol()
+        self.reportSoln(resp)
 
 
-    def reportSoln(self):
+    def reportSoln(self, resp):
         print("website: {}".format(self.url.netloc))
         print("1. Support of HTTPS: {}".format("yes" if self.url.scheme == 'https' else "no"))
         print("2. The newest HTTP versions that the server supports: {}".format(self.protocol))
         print("3. List of Cookies:")
-        if self.cookies != None:
-            for cookie in self.cookies:
-                print("name: {}, key: {}, domain name: {}".format(cookie.name, cookie.key, cookie.domain))
+        # if self.cookies != None:
+        #     for cookie in self.cookies:
+        #         print("name: {}, key: {}, domain name: {}".format(cookie.name, cookie.key, cookie.domain))
 
 
     def findHttpScheme(self):
         print("-----Finding available HTTP scheme---")
         self.openHttpSocket(self.url)
-        self.httpSend("HEAD", self.url.path, 'HTTP/1.1', self.url.netloc)
+        self.httpSend("HEAD", self.url.path, self.protocol, self.url.netloc)
         resp = self.httpRecv()
-        if(resp[0]['Status-Code'] == 302):
+        if(resp[0]['Status-Code'] == 302 or resp[0]['Status-Code'] == 301):
             self.url = urlparse(resp[0]['Location'])
             if (self.url.scheme == ''): self.url.scheme = 'http'
             self.closeHttpSocket()
@@ -41,13 +41,12 @@ class SmartWebClient():
 
     def findHttpProtocol(self):
         print("-----Finding available HTTP protocol---")
-        self.httpSend("HEAD", self.url.path, 'HTTP/1.1', self.url.netloc)
+        self.httpSend("HEAD", self.url.path, self.protocol, self.url.netloc)
         resp = self.httpRecv()
         if (resp[0]['Status-Code'] == 200):
-            self.protocol = 'HTTP/1.1'
-            print(resp)
+            self.protocol = resp[0]['HTTP-Version']
+        return (resp)
             
-
 
     def httpSend(self, method, path, httpV, host):
         if (self.sock != None):
@@ -90,9 +89,20 @@ class SmartWebClient():
         })
         for attribute in splitHeader[1:]:
             splitAttribute = attribute.split(": ")
-            parsedResponse.update({
-                splitAttribute[0]: splitAttribute[1]
-            })
+
+            if(splitAttribute[0] != 'Set-Cookie'):
+                parsedResponse.update({
+                    splitAttribute[0]: splitAttribute[1]
+                })
+            else:
+                crumbs = splitAttribute[1].split("; ")
+                cookie = {
+                    'name': crumbs[0].split('=')[0],
+                    'value': crumbs[0].split('=')[1],
+                    'domain': 'test'
+                }
+                self.cookies.append(cookie)
+                print(cookie)
         return (parsedResponse, body)        
 
 
