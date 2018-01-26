@@ -32,11 +32,11 @@ class SmartWebClient():
 
 
     def findHttpScheme(self):
-        print("-----Finding available HTTP scheme---")
-        self.openHttpSocket(self.url)
+        self.sock = self.openHttpSocket(self.url)
         self.httpSend("HEAD", self.url.path, self.protocol, self.url.netloc)
         resp = self.httpRecv()
         if(resp[0]['Status-Code'] == 302 or resp[0]['Status-Code'] == 301):
+            self.closeHttpSocket(self.sock)
             self.url = urlparse(resp[0]['Location'])
             if (self.url.scheme == ''): self.url.scheme = 'http'
             self.closeHttpSocket()
@@ -124,18 +124,19 @@ class SmartWebClient():
         if (SCHEME == 'HTTPS'):
             ctx = ssl.create_default_context()
             ctx.set_alpn_protocols(['h2', 'spdy/3', 'http/1.1'])
-            self.sock = ctx.wrap_socket(
+            sock = ctx.wrap_socket(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname=parsedURL.netloc
             )
         else:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        self.sock.connect((parsedURL.netloc, PORT))
+        sock.connect((parsedURL.netloc, PORT))
+        return sock
 
 
-    def closeHttpSocket(self):
-        if (self.sock != None):
-            self.sock.close()
+    def closeHttpSocket(self, sock):
+        if (sock != None):
+            sock.close()
             print("---Socket Closed---")
         else:
             print("No Socket To Close")
