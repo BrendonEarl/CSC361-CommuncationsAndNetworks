@@ -11,8 +11,11 @@ class SmartWebClient():
         self.url = urlparse("https://{}".format(url))
 
         print('Starting Smart Web Client\n')
-        print("---Finding available HTTP scheme---")
+        print("\n---\/ Finding available HTTP scheme and snatching cookies\/ ---")
         resp = self.findHttpScheme()
+        print("\n---\/ Testing for HTTP/2 availability \/---")
+        self.testHttp2()
+        print("\n\n---\/ Solution \/---")
         self.reportSoln(resp)
 
 
@@ -34,7 +37,7 @@ class SmartWebClient():
     def findHttpScheme(self):
         self.sock = self.openHttpSocket(self.url)
 
-            self.httpSend("HEAD", self.url, 'HTTP/1.1')
+        self.httpSend("HEAD", self.url, 'HTTP/1.1')
         header, body = self.parseResponse(self.httpRecv())
         
         if(header['status-code'] == 505):
@@ -58,7 +61,7 @@ class SmartWebClient():
             (self.sock.selected_alpn_protocol() == 'h2c' or self.sock.selected_npn_protocol() == 'h2c')
             ):
                 self.protocol = 'HTTP/2'
-            
+
 
     def httpSend(self, method, parsedURL, httpV, h2 = False):
         if (self.sock != None):
@@ -96,9 +99,13 @@ class SmartWebClient():
 
 
     def parseResponse(self, resp):
-        print(resp)
         parsedResponse = {}
-        header, body = resp.split("\r\n\r\n")
+        splitResp = resp.split("\r\n\r\n")
+        header = splitResp[0]
+        if (len(splitResp) > 1):
+            body = splitResp[1]
+        else:
+            body = None
         splitHeader = header.split('\r\n')
         statusTokens = splitHeader[0].split(' ')
         parsedResponse.update({
@@ -109,9 +116,12 @@ class SmartWebClient():
         for attribute in splitHeader[1:]:
             splitAttribute = attribute.split(": ")
             if(splitAttribute[0].lower() != 'set-cookie'):
-                parsedResponse.update({
-                    splitAttribute[0].lower(): splitAttribute[1]
-                })
+                try:
+                    parsedResponse.update({
+                        splitAttribute[0].lower(): splitAttribute[1]
+                    })
+                except IndexError:
+                    print('Malformed header attribute: {}'.format(splitAttribute))
             else:
                 crumbs = splitAttribute[1].split("; ")
                 name = crumbs[0].split('=')[0]
