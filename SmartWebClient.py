@@ -10,12 +10,14 @@ class SmartWebClient():
         self.cookies = []
         self.url = urlparse("https://{}".format(url))
 
-        print('Starting Smart Web Client\n')
-        print("\n---\/ Finding available HTTP scheme and snatching cookies\/ ---")
+        print('\n.............................')
+        print('..Starting Smart Web Client..')
+        print('.............................\n')
+        print("---\/ Finding available HTTP scheme and snatching cookies  \/ ---\n")
         resp = self.findHttpScheme()
-        print("\n---\/ Testing for HTTP/2 availability \/---")
+        print("\n---\/ Testing for HTTP/2 availability \/---\n")
         self.testHttp2()
-        print("\n\n---\/ Solution \/---")
+        print("\n\n---\/ Solution \/---\n")
         self.reportSoln(resp)
 
 
@@ -53,6 +55,7 @@ class SmartWebClient():
         
         return header
 
+
     def testHttp2(self):
         self.closeHttpSocket(self.sock)
         self.sock = self.openHttpSocket(self.url, True)
@@ -63,21 +66,22 @@ class SmartWebClient():
                 self.protocol = 'HTTP/2'
 
 
-    def httpSend(self, method, parsedURL, httpV, h2 = False):
+    def httpSend(self, method, parsedURL, httpV):
         if (self.sock != None):
-            print("---Request begin---")
+            print("-Request begin-")
 
             req = "{} {} {}\r\nhost: {}\r\nconnection: {}\r\n\r\n".format(
                 method,
                 parsedURL.path if parsedURL.path != '' else "/",
                 httpV,
                 parsedURL.netloc,
-                "keep-alive" if h2 == False else "upgrade, http2-settings",
+                "keep-alive"
             )
+
             print(req.strip())
             self.sock.send(req.encode())
 
-            print("\n---Request end---")
+            print("\n-Request end-")
             print("HTTP request sent, awaiting response...")
         else:
             print("No Socket Initialized")
@@ -87,11 +91,14 @@ class SmartWebClient():
         if (self.sock != None):
             resp = self.sock.recv().decode()
             splitResp = resp.split("\r\n\r\n")
-            print("\n---Response header---")
+
+            print("\n-Response header-")
             print(splitResp[0])
+
             if (len(splitResp) > 1):
-                print("\n---Response body---")
+                print("\n-Response body-")
                 print(splitResp[1])
+
             return resp
         else:
             print("No Socket Initialized")
@@ -100,19 +107,23 @@ class SmartWebClient():
 
     def parseResponse(self, resp):
         parsedResponse = {}
+
         splitResp = resp.split("\r\n\r\n")
         header = splitResp[0]
         if (len(splitResp) > 1):
             body = splitResp[1]
         else:
             body = None
+
         splitHeader = header.split('\r\n')
         statusTokens = splitHeader[0].split(' ')
+
         parsedResponse.update({
             "http-version": statusTokens[0],
             "status-code": int(statusTokens[1]),
             "reason-phrase": ''.join("{} ".format(token) for token in statusTokens[2:])
         })
+
         for attribute in splitHeader[1:]:
             splitAttribute = attribute.split(": ")
             if(splitAttribute[0].lower() != 'set-cookie'):
@@ -124,40 +135,40 @@ class SmartWebClient():
                     print('Malformed header attribute: {}'.format(splitAttribute))
             else:
                 crumbs = splitAttribute[1].split("; ")
+
                 name = crumbs[0].split('=')[0]
                 key = crumbs[0][len(name)+1:]
                 domain = None
+
                 for crumb in crumbs:
                     if ('domain' in crumb):
                         domain = crumb.split('=')[1]
+
                 cookie = {
                     'name': name,
                     'key': key,
                     'domain': domain
                 }
+
                 self.cookies.append(cookie)
         return (parsedResponse, body)        
 
 
     def openHttpSocket(self, parsedURL, h2 = False):
-        print(parsedURL)
         SCHEME = "HTTPS" if parsedURL.scheme == 'https' else "HTTP"
         PORT = 443 if parsedURL.scheme == 'https' else 80
-        print("---Opening {} Socket on Port {}".format(SCHEME, PORT))
+        PROTOCOLS = ['h2', 'http/1.1'] if h2 else ['http/1.1']
+
+        print("-Opening {} Socket on Port {}-".format(SCHEME, PORT))
 
         if (SCHEME == 'HTTPS'):
             ctx = ssl.create_default_context()
-            if (h2):
-                ctx.set_alpn_protocols(['h2', 'http/1.1'])
-                ctx.set_npn_protocols(['h2', 'http/1.1'])
-            else:
-                ctx.set_alpn_protocols(['http/1.1'])
-                ctx.set_npn_protocols(['http/1.1'])
+            ctx.set_alpn_protocols(PROTOCOLS)
+            ctx.set_npn_protocols(PROTOCOLS)
+
             sock = ctx.wrap_socket(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname=parsedURL.netloc
             )
-            sock.connect((parsedURL.netloc, PORT))
-            return sock
         else:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -168,7 +179,7 @@ class SmartWebClient():
     def closeHttpSocket(self, sock):
         if (sock != None):
             sock.close()
-            print("---Socket Closed---")
+            print("-Socket Closed-")
         else:
             print("No Socket To Close")
 
