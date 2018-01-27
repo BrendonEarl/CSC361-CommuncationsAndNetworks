@@ -34,17 +34,11 @@ class SmartWebClient():
     def findHttpScheme(self):
         self.sock = self.openHttpSocket(self.url)
 
-        if(self.url.scheme == 'https' and self.sock.selected_alpn_protocol() == 'h2' or self.sock.selected_npn_protocol() == 'h2'):
-            self.httpSend("HEAD", self.url, 'HTTP/2')
-            print('222222')
-            self.protocol = 'HTTP/2'
-        else:
             self.httpSend("HEAD", self.url, 'HTTP/1.1')
-            
         header, body = self.parseResponse(self.httpRecv())
         
         if(header['status-code'] == 505):
-            self.protocol = 'HTTP/1.0'
+            self.protocol = header['http-version']
         elif(header['status-code'] == 302 or header['status-code'] == 301):
             self.closeHttpSocket(self.sock)
             if 'location' in header:
@@ -56,34 +50,26 @@ class SmartWebClient():
         
         return header
 
-
-    # def findHttpProtocol(self):
-    #     if (self.url.scheme == 'https'):
-    #         if (self.sock.selected_alpn_protocol() == 'h2' or self.sock.selected_npn_protocol() == 'h2'):
-    #             self.protocol = 'HTTP/2'
-    #     self.httpSend("HEAD", self.url, 'HTTP/1.1')
-    #     resp = self.parseResponse(self.httpRecv())
-    #     if (resp[0]['status-code'] == 101):
-    #         self.protocol = 'HTTP/2'
-    #     elif (resp[0]['status-code'] != 200):
-    #         self.httpSend("HEAD", self.url, resp[0]['http-version'])
-    #         resp = self.parseResponse(self.httpRecv())
-    #         self.protocol = resp[0]['http-version']
-    #     else: self.protocol = resp[0]['http-version']
-    #     return resp
+    def testHttp2(self):
+        self.closeHttpSocket(self.sock)
+        self.sock = self.openHttpSocket(self.url, True)
+        if(self.url.scheme == 'https' and \
+            (self.sock.selected_alpn_protocol() == 'h2' or self.sock.selected_npn_protocol() == 'h2') or \
+            (self.sock.selected_alpn_protocol() == 'h2c' or self.sock.selected_npn_protocol() == 'h2c')
+            ):
+                self.protocol = 'HTTP/2'
             
 
     def httpSend(self, method, parsedURL, httpV, h2 = False):
         if (self.sock != None):
             print("---Request begin---")
 
-            req = "{} {} {}\r\nhost: {}\r\nconnection: {}\r\naccept-charset: utf-8\r\ncontent-length: 0{}\r\n\r\n".format(
+            req = "{} {} {}\r\nhost: {}\r\nconnection: {}\r\n\r\n".format(
                 method,
                 parsedURL.path if parsedURL.path != '' else "/",
                 httpV,
                 parsedURL.netloc,
                 "keep-alive" if h2 == False else "upgrade, http2-settings",
-                "\r\nhttp2-settings: "
             )
             print(req.strip())
             self.sock.send(req.encode())
@@ -143,7 +129,7 @@ class SmartWebClient():
         return (parsedResponse, body)        
 
 
-    def openHttpSocket(self, parsedURL):
+    def openHttpSocket(self, parsedURL, h2 = False):
         print(parsedURL)
         SCHEME = "HTTPS" if parsedURL.scheme == 'https' else "HTTP"
         PORT = 443 if parsedURL.scheme == 'https' else 80
@@ -151,8 +137,12 @@ class SmartWebClient():
 
         if (SCHEME == 'HTTPS'):
             ctx = ssl.create_default_context()
-            ctx.set_alpn_protocols(['h2', 'spdy/3', 'http/1.1'])
-            ctx.set_npn_protocols(['h2', 'spdy/3', 'http/1.1'])
+            if (h2):
+                ctx.set_alpn_protocols(['h2', 'http/1.1'])
+                ctx.set_npn_protocols(['h2', 'http/1.1'])
+            else:
+                ctx.set_alpn_protocols(['http/1.1'])
+                ctx.set_npn_protocols(['http/1.1'])
             sock = ctx.wrap_socket(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname=parsedURL.netloc
             )
