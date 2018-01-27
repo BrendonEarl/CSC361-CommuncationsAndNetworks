@@ -18,9 +18,10 @@ Then, depending on your configutation run either:
 where `<www.domain.tld>` is a web address like `www.github.com` or `docs.python.org`
 
 ## Expected behaviour
-If the web-server is misbehaving (not my fault), I'll do my best to let you know!
-Sometimes a supported `newest HTTP-Version` will be noted as `None`,
-that's be cause they dropped the connection and never got back.
+If the web-server is misbehaving (not my fault), I'll do my best to let you know! 
+Sometimes a supported `newest HTTP-Version` will be noted as `None`, 
+that's be cause they dropped the connection and never got back. For example, 
+`uvic.com` will fail gracefully and print an error to the terminal. 
 To match my output to the marking criteria, check under the "Solution" header
 
 __Happy Marking!__

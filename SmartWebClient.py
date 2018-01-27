@@ -1,14 +1,19 @@
 import sys
 import ssl
 import socket
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 
 class SmartWebClient():
     def  __init__(self, url):
         self.sock = None
         self.protocol = None
         self.cookies = []
-        self.url = urlparse("https://{}".format(url))
+        try:
+            self.url = urlparse("https://{}".format(url))
+        except ValueError:
+            print("!! Malformed URL entered")
+            print("Please re-run me to try again")
+            return
 
         print('\n.............................')
         print('..Starting Smart Web Client..')
@@ -33,7 +38,7 @@ class SmartWebClient():
             # for cookie in [dict(cookies) for cookies in set([tuple(cookie.items()) for cookie in self.cookies])]:
                 print("name: -, key: {}{}".format(
                     cookie['key'],
-                    ", domain name: {}".format(cookie['domain']) if cookie['domain'] != None else ""
+                    ", domain-name: {}".format(cookie['domain']) if cookie['domain'] != None else ""
                 ))
 
 
@@ -96,10 +101,10 @@ class SmartWebClient():
             try:
                 resp = self.sock.recv().decode()
             except TypeError:
-                print('Empty response')
+                print('!! Empty response')
                 return None
             except ConnectionResetError:
-                print('Connection dropped by peer')
+                print('!! Connection dropped by peer')
                 return None
                 
             splitResp = resp.split("\r\n\r\n")
@@ -123,7 +128,7 @@ class SmartWebClient():
         try:
             splitResp = resp.split("\r\n\r\n")
         except AttributeError:
-            print('No response to parse')
+            print('!! No response to parse')
             return (None, None)
 
         header = splitResp[0]
@@ -149,7 +154,7 @@ class SmartWebClient():
                         splitAttribute[0].lower(): splitAttribute[1]
                     })
                 except IndexError:
-                    print('Malformed header attribute: {}'.format(splitAttribute))
+                    print('!! Malformed header attribute: {}'.format(splitAttribute))
             else:
                 crumbs = splitAttribute[1].split("; ")
 
@@ -161,7 +166,7 @@ class SmartWebClient():
                         try:
                             domain = crumb.split('=')[1]
                         except IndexError:
-                            print('Malformed header domain cookie: {}'.format(splitAttribute))
+                            print('!! Malformed header domain cookie: {}'.format(splitAttribute))
 
                 cookie = {
                     'key': key,
@@ -192,8 +197,8 @@ class SmartWebClient():
 
         try:
             sock.connect((parsedURL.netloc, PORT))
-        except ssl.SSLError:
-            print('SSL Certificate Vification Failed')
+        except (ssl.SSLError, ssl.CertificateError):
+            print('!! SSL Certificate Vification Failed')
             self.closeHttpSocket(sock)
             self.url = parsedURL._replace(scheme="http")
             return self.openHttpSocket(self.url)
@@ -214,8 +219,9 @@ if __name__ == "__main__":
             print("No URL provided")
         else:
             SmartWebClient(sys.argv[1])
-    except ValueError as ve:
-        print(ve)
-        raise ve
-        sys.stderr.write('Incorrect URN format. Try again')
+    except:
+        print("!! Uh Oh! Something unexpected happened:")
+        e = sys.exc_info()[0]
+        print(e)
+        # raise e
     
