@@ -19,6 +19,8 @@ class SmartWebClient():
         self.testHttp2()
         print("\n\n---\/ Solution \/---\n")
         self.reportSoln(resp)
+        print()
+        self.closeHttpSocket(self.sock)
 
 
     def reportSoln(self, resp):
@@ -29,8 +31,7 @@ class SmartWebClient():
         if self.cookies != None:
             for cookie in self.cookies:
             # for cookie in [dict(cookies) for cookies in set([tuple(cookie.items()) for cookie in self.cookies])]:
-                print("name: {}, key: {}{}".format(
-                    cookie['name'],
+                print("name: -, key: {}{}".format(
                     cookie['key'],
                     ", domain name: {}".format(cookie['domain']) if cookie['domain'] != None else ""
                 ))
@@ -41,17 +42,21 @@ class SmartWebClient():
 
         self.httpSend("HEAD", self.url, 'HTTP/1.1')
         header, body = self.parseResponse(self.httpRecv())
-        
+        if (header == None): return None
+
         if(header['status-code'] == 505):
             self.protocol = header['http-version']
         elif(header['status-code'] == 302 or header['status-code'] == 301):
+            self.protocol = header['http-version']
             self.closeHttpSocket(self.sock)
             if 'location' in header:
                 self.url = urlparse(header['location'])
             if (self.url.scheme == ''): self.url.scheme = 'http'
             self.findHttpScheme()
-        else:
+        elif(header['status-code'] == 200):
             self.protocol = 'HTTP/1.1'
+        else:
+            print("Unexpected server error: {}".format(header['status-code']))
         
         return header
 
@@ -60,8 +65,7 @@ class SmartWebClient():
         self.closeHttpSocket(self.sock)
         self.sock = self.openHttpSocket(self.url, True)
         if(self.url.scheme == 'https' and \
-            (self.sock.selected_alpn_protocol() == 'h2' or self.sock.selected_npn_protocol() == 'h2') or \
-            (self.sock.selected_alpn_protocol() == 'h2c' or self.sock.selected_npn_protocol() == 'h2c')
+            (self.sock.selected_alpn_protocol() == 'h2' or self.sock.selected_npn_protocol() == 'h2')
             ):
                 self.protocol = 'HTTP/2'
 
@@ -89,7 +93,15 @@ class SmartWebClient():
 
     def httpRecv(self):
         if (self.sock != None):
-            resp = self.sock.recv().decode()
+            try:
+                resp = self.sock.recv().decode()
+            except TypeError:
+                print('Empty response')
+                return None
+            except ConnectionResetError:
+                print('Connection dropped by peer')
+                return None
+                
             splitResp = resp.split("\r\n\r\n")
 
             print("\n-Response header-")
@@ -108,7 +120,12 @@ class SmartWebClient():
     def parseResponse(self, resp):
         parsedResponse = {}
 
-        splitResp = resp.split("\r\n\r\n")
+        try:
+            splitResp = resp.split("\r\n\r\n")
+        except AttributeError:
+            print('No response to parse')
+            return (None, None)
+
         header = splitResp[0]
         if (len(splitResp) > 1):
             body = splitResp[1]
@@ -136,16 +153,17 @@ class SmartWebClient():
             else:
                 crumbs = splitAttribute[1].split("; ")
 
-                name = crumbs[0].split('=')[0]
-                key = crumbs[0][len(name)+1:]
+                key = crumbs[0].split('=')[0]
                 domain = None
 
                 for crumb in crumbs:
                     if ('domain' in crumb):
-                        domain = crumb.split('=')[1]
+                        try:
+                            domain = crumb.split('=')[1]
+                        except IndexError:
+                            print('Malformed header domain cookie: {}'.format(splitAttribute))
 
                 cookie = {
-                    'name': name,
                     'key': key,
                     'domain': domain
                 }
@@ -172,7 +190,13 @@ class SmartWebClient():
         else:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        sock.connect((parsedURL.netloc, PORT))
+        try:
+            sock.connect((parsedURL.netloc, PORT))
+        except ssl.SSLError:
+            print('SSL Certificate Vification Failed')
+            self.closeHttpSocket(sock)
+            self.url = parsedURL._replace(scheme="http")
+            return self.openHttpSocket(self.url)
         return sock
 
 
