@@ -31,14 +31,14 @@ class Connection:
         self.packets = []
     
     def close_connection(self, end_time):
-        if this.end_time is not None:
+        if self.end_time is not None:
             print("Connection already closed")
             return
-        this.end_time = end_time
+        self.end_time = end_time
     
     def get_duration(self, close_time):
-        if this.close_time is None: return None
-        return this.close_time - this.start_time
+        if self.close_time is None: return None
+        return self.close_time - self.start_time
     
     def add_packet(self, packet):
         if packet.src_ip == self.ip1: self.pkts_1 += 1
@@ -50,7 +50,7 @@ class Connection:
             return
         if packet.fin == 1: 
             self.fin += 1
-            self.close_connection()
+            self.close_connection(packet.time)
         if packet.syn == 1: self.syn += 1
         if packet.rst == 1: self.rst += 1
         self.packets.append(packet)
@@ -59,6 +59,9 @@ class Connection:
         if (ip1 == self.ip1 and ip2 == self.ip2) or (ip1 == self.ip2 and ip2 == self.ip1):
             return True
         return False
+
+    def print_state(self):
+        print("S{}F{}".format(self.syn, self.fin))
 
 
 class Packet:
@@ -72,8 +75,6 @@ class Packet:
         self.dest_ip = ip_header[16:20]
         self.src_port = tcp_header[0]*256 + tcp_header[1]
         self.dest_port = tcp_header[2]*256 + tcp_header[3]
-        print(self.src_port)
-        print(self.dest_port)
         self.fin = tcp_flags[1] & 0x01
         self.syn = tcp_flags[1] & 0x02 >> 1
         self.rst = tcp_flags[1] & 0x04 >> 2
@@ -117,7 +118,6 @@ if __name__ == '__main__':
         
         session.consume_packet(header_data, header_info.getts)
 
-    print(session.connections)
+    for c in session.connections: session.connections[c].print_state() 
 
-    session.
     
