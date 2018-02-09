@@ -12,6 +12,9 @@ class Session:
             self.connections[new_packet.sig].add_packet(new_packet)
         else:
             self.connections[new_packet.sig] = Connection(new_packet)
+        
+        if self.connections[new_packet.sig].end_time is not None:
+            self.connections["{}-c{}".format(new_packet.sig, new_packet.time)] = self.connections.pop(new_packet.sig)
 
 
 class Connection:
@@ -36,9 +39,9 @@ class Connection:
             return
         self.end_time = end_time
     
-    def get_duration(self, close_time):
-        if self.close_time is None: return None
-        return self.close_time - self.start_time
+    def get_duration(self, end_time):
+        if self.end_time is None: return None
+        return self.end_time - self.start_time
     
     def add_packet(self, packet):
         if packet.src_ip == self.ip1: self.pkts_1 += 1
@@ -61,6 +64,7 @@ class Connection:
         return False
 
     def print_state(self):
+        if self.rst == 1: print("R")
         print("S{}F{}".format(self.syn, self.fin))
 
 
@@ -118,6 +122,7 @@ if __name__ == '__main__':
         
         session.consume_packet(header_data, header_info.getts)
 
+    for c in session.connections: print(c)
     for c in session.connections: session.connections[c].print_state() 
 
     
