@@ -12,9 +12,15 @@ class Connection:
         self.end_time = None
         self.pkts_1 = 0
         self.pkts_2 = 0
+        self.syn = 0
+        self.fin = 0
+        self.rst = 0
     
-    def close_connection(close_time):
-        this.close_time = close_time
+    def close_connection(end_time):
+        if this.end_time is not None:
+            print("Connection already closed")
+            return
+        this.end_time = end_time
     
     def get_duration(close_time):
         if this.close_time is None: return None
