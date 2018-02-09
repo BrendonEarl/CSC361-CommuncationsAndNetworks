@@ -6,22 +6,22 @@ class Session:
     def __init__(self):
         self.connections = {}
     
-    def consumePacket(header_bstr):
-        new_packet = Packet(header_bstr)
-        if new_packet.sig in connections:
-            connections[new_packet.sig].add_packet(new_packet)
+    def consume_packet(self, header_bstr, packet_time):
+        new_packet = Packet(header_bstr, packet_time)
+        if new_packet.sig in self.connections:
+            self.connections[new_packet.sig].add_packet(new_packet)
         else:
-            connections[new_packet.sig] = Connection(new_packet)
+            self.connections[new_packet.sig] = Connection(new_packet)
 
 
 
 class Connection:
     def __init__(self, packet):
-        self.sig = get_sig(packet.ip1, packet.ip2, packet.port1, packet.port2)
-        self.ip1 = packet.ip1
-        self.ip2 = packet.ip2
-        self.port1 = packet.port1
-        self.port2 = packet.port2
+        self.sig = get_sig(packet.src_ip, packet.dest_ip, packet.src_port, packet.dest_port)
+        self.ip1 = packet.src_ip
+        self.ip2 = packet.dest_ip
+        self.port1 = packet.src_port
+        self.port2 = packet.dest_port
         self.start_time = packet.time
         self.end_time = None
         self.pkts_1 = 0
@@ -57,7 +57,7 @@ class Connection:
 
 class Packet:
     def __init__(self, header_bstr, time):
-        header = getBytes(header_data)
+        header = get_bytes(header_data)
         ip_header = header[14:34]
         tcp_header = header[34:]
 
@@ -70,7 +70,7 @@ class Packet:
         self.data_len = tcp_header[14:16]
     
 
-def getBytes(data):
+def get_bytes(data):
     output = []
     for d in data:
         output.append(d)
@@ -95,13 +95,14 @@ if __name__ == '__main__':
     except IndexError:
         print("Please include pcap file name")
 
+    session = Session()
+
     while True:
         header_info, header_data = cap.next()
         if (header_info is None):
             break
         
-        Packet(header_data, header_info.getts())
+        session.consume_packet(header_data, header_info.getts)
 
-        print()
-
+    print(session.connections)
     
