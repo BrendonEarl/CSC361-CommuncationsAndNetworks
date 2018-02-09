@@ -15,6 +15,7 @@ class Connection:
         self.syn = 0
         self.fin = 0
         self.rst = 0
+        self.packets = []
     
     def close_connection(end_time):
         if this.end_time is not None:
@@ -38,6 +39,25 @@ class Connection:
         if (ip1 == self.ip1 and ip2 == self.ip2) or (ip1 == self.ip2 and ip2 == self.ip1):
             return True
         return False
+
+class Packet:
+    def __init__(header_bstr):
+        header = getBytes(header_data)
+
+        ip_header = header[14:34]
+        print(ip_header)
+        src_ip = ip_header[12:16]
+        dest_ip = ip_header[16:20]
+
+        tcp_header = header[34:]
+        print(tcp_header)
+        src_port = tcp_header[0] & 0x10 >> 16
+        dest_port = tcp_header[0] & 0x01 >> 16
+        self.src_ip
+        self.dest_ip
+        self.src_port
+        self.dest_port
+        self.data_len
 
 
 def getBytes(data):
