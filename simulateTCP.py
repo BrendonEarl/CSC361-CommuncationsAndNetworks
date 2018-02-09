@@ -48,9 +48,12 @@ class Connection:
             print("Attempted ip: {}".format(packet.src_ip))
             print("On connection between {} and {}".format(self.ip1, self.ip2))
             return
-        if packet.fin == 1: self.fin += 1
+        if packet.fin == 1: 
+            self.fin += 1
+            self.close_connection()
         if packet.syn == 1: self.syn += 1
         if packet.rst == 1: self.rst += 1
+        self.packets.append(packet)
     
     def check_connection(self, ip1, ip2):
         if (ip1 == self.ip1 and ip2 == self.ip2) or (ip1 == self.ip2 and ip2 == self.ip1):
@@ -63,7 +66,7 @@ class Packet:
         header = get_bytes(header_data)
         ip_header = header[14:34]
         tcp_header = header[34:]
-        flags = tcp_header[12:14]
+        tcp_flags = tcp_header[12:14]
 
         self.src_ip = ip_header[12:16]
         self.dest_ip = ip_header[16:20]
@@ -71,9 +74,9 @@ class Packet:
         self.dest_port = tcp_header[2]*256 + tcp_header[3]
         print(self.src_port)
         print(self.dest_port)
-        self.fin = flags[1] & 0x01
-        self.syn = flags[1] & 0x02 >> 1
-        self.rst = flags[1] & 0x04 >> 2
+        self.fin = tcp_flags[1] & 0x01
+        self.syn = tcp_flags[1] & 0x02 >> 1
+        self.rst = tcp_flags[1] & 0x04 >> 2
         self.time = time
         self.sig = get_sig(self.src_ip, self.dest_ip, self.src_port, self.dest_port)
         self.data_len = tcp_header[14:16]
@@ -115,4 +118,6 @@ if __name__ == '__main__':
         session.consume_packet(header_data, header_info.getts)
 
     print(session.connections)
+
+    session.
     
