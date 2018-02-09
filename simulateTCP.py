@@ -14,7 +14,6 @@ class Session:
             self.connections[new_packet.sig] = Connection(new_packet)
 
 
-
 class Connection:
     def __init__(self, packet):
         self.sig = get_sig(packet.src_ip, packet.dest_ip, packet.src_port, packet.dest_port)
@@ -49,22 +48,30 @@ class Connection:
             print("Attempted ip: {}".format(packet.src_ip))
             print("On connection between {} and {}".format(self.ip1, self.ip2))
             return
+        if packet.fin == 1: self.fin += 1
+        if packet.syn == 1: self.syn += 1
+        if packet.rst == 1: self.rst += 1
     
     def check_connection(self, ip1, ip2):
         if (ip1 == self.ip1 and ip2 == self.ip2) or (ip1 == self.ip2 and ip2 == self.ip1):
             return True
         return False
 
+
 class Packet:
     def __init__(self, header_bstr, time):
         header = get_bytes(header_data)
         ip_header = header[14:34]
         tcp_header = header[34:]
+        flags = tcp_header[12:14]
 
         self.src_ip = ip_header[12:16]
         self.dest_ip = ip_header[16:20]
         self.src_port = tcp_header[0] & 0x10 >> 16
         self.dest_port = tcp_header[0] & 0x01
+        self.fin = flags[1] & 0x01
+        self.syn = flags[1] & 0x02 >> 1
+        self.rst = flags[1] & 0x04 >> 2
         self.time = time
         self.sig = get_sig(self.src_ip, self.dest_ip, self.src_port, self.dest_port)
         self.data_len = tcp_header[14:16]
@@ -80,6 +87,7 @@ def get_bytes(data):
 def get_sig(ip1, ip2, port1, port2):
     ip1_str = ''.join(str(seg) for seg in ip1)
     ip2_str = ''.join(str(seg) for seg in ip2)
+    print("{}:{} -> {}:{}".format(ip1, port1, ip2, port2))
     if ip1_str < ip2_str:
         return "{}{}{}{}".format(ip1_str, ip2_str, port1, port2)
     elif ip1_str > ip2_str:
