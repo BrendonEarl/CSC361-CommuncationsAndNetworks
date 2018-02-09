@@ -2,6 +2,37 @@
 import pcapy
 import sys
 
+class Connection:
+    def __init__(self, ip1, ip2, port1, port2, start_time):
+        self.ip1 = ip1
+        self.ip2 = ip2
+        self.port1 = port1
+        self.port2 = port2
+        self.start_time = start_time
+        self.end_time = None
+        self.pkts_1 = 0
+        self.pkts_2 = 0
+    
+    def close_connection(close_time):
+        this.close_time = close_time
+    
+    def get_duration(close_time):
+        if this.close_time is None: return None
+        return this.close_time - this.start_time
+    
+    def add_packet(src_ip):
+        if src_ip == self.ip1: self.pkts_1 += 1
+        elif src_ip == self.ip2: self.pkts_2 += 1
+        else:
+            print("Wrong Connection:")
+            print("Attempted ip: {}".format(src_ip))
+            print("On connection between {} and {}".format(self.ip1, self.ip2))
+    
+    def check_connection(ip1, ip2):
+        if (ip1 == self.ip1 and ip2 == self.ip2) or (ip1 == self.ip2 and ip2 == self.ip1):
+            return True
+        return False
+
 
 def getBytes(data):
     output = []
@@ -26,7 +57,7 @@ if __name__ == '__main__':
         print(ip_header)
         src_ip = ip_header[12:16]
         dest_ip = ip_header[16:20]
-        
+
         tcp_header = header[34:]
         print(tcp_header)
         src_port = tcp_header[0] & 0x10 >> 16
