@@ -67,8 +67,10 @@ class Packet:
 
         self.src_ip = ip_header[12:16]
         self.dest_ip = ip_header[16:20]
-        self.src_port = tcp_header[0] & 0x10 >> 16
-        self.dest_port = tcp_header[0] & 0x01
+        self.src_port = tcp_header[0]*256 + tcp_header[1]
+        self.dest_port = tcp_header[2]*256 + tcp_header[3]
+        print(self.src_port)
+        print(self.dest_port)
         self.fin = flags[1] & 0x01
         self.syn = flags[1] & 0x02 >> 1
         self.rst = flags[1] & 0x04 >> 2
