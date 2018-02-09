@@ -52,7 +52,7 @@ class Packet:
         tcp_header = header[34:]
         print(tcp_header)
         self.src_port = tcp_header[0] & 0x10 >> 16
-        self.dest_port = tcp_header[0] & 0x01 >> 16
+        self.dest_port = tcp_header[0] & 0x01
 
         self.data_len = tcp_header[14:16]
 
