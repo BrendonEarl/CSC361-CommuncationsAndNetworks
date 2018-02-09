@@ -45,19 +45,14 @@ class Connection:
 class Packet:
     def __init__(self, header_bstr):
         header = getBytes(header_data)
-
         ip_header = header[14:34]
-        print(ip_header)
+        tcp_header = header[34:]
+
         self.src_ip = ip_header[12:16]
         self.dest_ip = ip_header[16:20]
-
-        tcp_header = header[34:]
-        print(tcp_header)
         self.src_port = tcp_header[0] & 0x10 >> 16
         self.dest_port = tcp_header[0] & 0x01
-
         self.sig = get_sig(src_ip, dest_ip, src_port, dest_port)
-
         self.data_len = tcp_header[14:16]
     
 
