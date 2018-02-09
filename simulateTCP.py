@@ -41,23 +41,20 @@ class Connection:
         return False
 
 class Packet:
-    def __init__(header_bstr):
+    def __init__(self, header_bstr):
         header = getBytes(header_data)
 
         ip_header = header[14:34]
         print(ip_header)
-        src_ip = ip_header[12:16]
-        dest_ip = ip_header[16:20]
+        self.src_ip = ip_header[12:16]
+        self.dest_ip = ip_header[16:20]
 
         tcp_header = header[34:]
         print(tcp_header)
-        src_port = tcp_header[0] & 0x10 >> 16
-        dest_port = tcp_header[0] & 0x01 >> 16
-        self.src_ip
-        self.dest_ip
-        self.src_port
-        self.dest_port
-        self.data_len
+        self.src_port = tcp_header[0] & 0x10 >> 16
+        self.dest_port = tcp_header[0] & 0x01 >> 16
+
+        self.data_len = tcp_header[14:16]
 
 
 def getBytes(data):
@@ -77,17 +74,8 @@ if __name__ == '__main__':
         header_info, header_data = cap.next()
         if (header_info is None):
             break
-        header = getBytes(header_data)
-
-        ip_header = header[14:34]
-        print(ip_header)
-        src_ip = ip_header[12:16]
-        dest_ip = ip_header[16:20]
-
-        tcp_header = header[34:]
-        print(tcp_header)
-        src_port = tcp_header[0] & 0x10 >> 16
-        dest_port = tcp_header[0] & 0x01 >> 16
+        
+        Packet(header_data)
 
         print()
 
