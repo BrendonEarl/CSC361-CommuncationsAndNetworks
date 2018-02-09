@@ -2,14 +2,27 @@
 import pcapy
 import sys
 
+class Session:
+    def __init__(self):
+        self.connections = {}
+    
+    def consumePacket(header_bstr):
+        new_packet = Packet(header_bstr)
+        if new_packet.sig in connections:
+            connections[new_packet.sig].add_packet(new_packet)
+        else:
+            connections[new_packet.sig] = Connection(new_packet)
+
+
+
 class Connection:
-    def __init__(self, ip1, ip2, port1, port2, start_time):
-        self.sig = get_sig(ip1, ip2, port1, port2)
-        self.ip1 = ip1
-        self.ip2 = ip2
-        self.port1 = port1
-        self.port2 = port2
-        self.start_time = start_time
+    def __init__(self, packet):
+        self.sig = get_sig(packet.ip1, packet.ip2, packet.port1, packet.port2)
+        self.ip1 = packet.ip1
+        self.ip2 = packet.ip2
+        self.port1 = packet.port1
+        self.port2 = packet.port2
+        self.start_time = packet.time
         self.end_time = None
         self.pkts_1 = 0
         self.pkts_2 = 0
@@ -43,7 +56,7 @@ class Connection:
         return False
 
 class Packet:
-    def __init__(self, header_bstr):
+    def __init__(self, header_bstr, time):
         header = getBytes(header_data)
         ip_header = header[14:34]
         tcp_header = header[34:]
@@ -52,7 +65,8 @@ class Packet:
         self.dest_ip = ip_header[16:20]
         self.src_port = tcp_header[0] & 0x10 >> 16
         self.dest_port = tcp_header[0] & 0x01
-        self.sig = get_sig(src_ip, dest_ip, src_port, dest_port)
+        self.time = time
+        self.sig = get_sig(self.src_ip, self.dest_ip, self.src_port, self.dest_port)
         self.data_len = tcp_header[14:16]
     
 
@@ -86,7 +100,7 @@ if __name__ == '__main__':
         if (header_info is None):
             break
         
-        Packet(header_data)
+        Packet(header_data, header_info.getts())
 
         print()
 
