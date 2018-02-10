@@ -2,3 +2,4 @@
 docs.html
 *.pcap
 pcapy-master/**/*
+.vscode
