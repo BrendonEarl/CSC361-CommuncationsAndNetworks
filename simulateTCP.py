@@ -51,11 +51,12 @@ class Connection:
             print("Attempted ip: {}".format(packet.src_ip))
             print("On connection between {} and {}".format(self.ip1, self.ip2))
             return
-        if packet.fin == 1: 
-            self.fin += 1
-            self.close_connection(packet.time)
+        if packet.fin == 1: self.fin += 1
         if packet.syn == 1: self.syn += 1
-        if packet.rst == 1: self.rst += 1
+        if packet.rst == 1: 
+            self.rst += 1
+            # self.close_connection(packet.time)
+        if packet.fin == 2: self.close_connection(packet.time)
         self.packets.append(packet)
     
     def check_connection(self, ip1, ip2):
@@ -66,6 +67,7 @@ class Connection:
     def print_state(self):
         if self.rst == 1: print("R")
         print("S{}F{}".format(self.syn, self.fin))
+        if self.syn == 0 and self.fin == 0: print(len(self.packets))
 
 
 class Packet:
@@ -97,7 +99,7 @@ def get_bytes(data):
 def get_sig(ip1, ip2, port1, port2):
     ip1_str = ''.join(str(seg) for seg in ip1)
     ip2_str = ''.join(str(seg) for seg in ip2)
-    print("{}:{} -> {}:{}".format(ip1, port1, ip2, port2))
+    # print("{}:{} -> {}:{}".format(ip1, port1, ip2, port2))
     if ip1_str < ip2_str:
         return "{}{}{}{}".format(ip1_str, ip2_str, port1, port2)
     elif ip1_str > ip2_str:
@@ -120,7 +122,7 @@ if __name__ == '__main__':
         if (header_info is None):
             break
         
-        session.consume_packet(header_data, header_info.getts)
+        session.consume_packet(header_data, header_info.getts())
 
     for c in session.connections: print(c)
     for c in session.connections: session.connections[c].print_state() 
