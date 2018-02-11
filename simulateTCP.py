@@ -7,8 +7,10 @@ with a series of sessions within, each tracking the packets apart of each
 import sys
 import pcapy
 
+
 class Session:
     """Connection session"""
+
     def __init__(self):
         """Initialize connections dictionary"""
         self.connections = {}
@@ -38,11 +40,13 @@ class Session:
 
 class Connection:
     """Connection between two specific services [ip:port]s"""
+
     def __init__(self, packet):
         # pylint: disable=too-many-instance-attributes
         # 13 is reasonable without breaking them into dicts
         # TODO: consolodate some of these
-        self.sig = get_sig(packet.src_ip, packet.dest_ip, packet.src_port, packet.dest_port)
+        self.sig = get_sig(packet.src_ip, packet.dest_ip,
+                           packet.src_port, packet.dest_port)
         # print("{}:{} -> {}:{}".format(src_ip, src_port, dest_ip, dest_port))
         self.ip1 = packet.src_ip
         self.ip2 = packet.dest_ip
@@ -56,20 +60,20 @@ class Connection:
         self.fin = 0
         self.rst = 0
         self.packets = []
-    
+
     def close_connection(self, end_time):
         """Marks connection as closed by associating an end time"""
         if self.end_time is not None:
             print("Connection already closed")
             return
         self.end_time = end_time
-    
+
     def get_duration(self):
         """Return duration of connection"""
         if self.end_time is None:
             return None
         return self.end_time - self.start_time
-    
+
     def add_packet(self, packet):
         """Add packet to connection"""
         # Track direction of packet
@@ -104,6 +108,7 @@ class Connection:
 
 class Packet:
     """Parsed packet"""
+
     def __init__(self, header_bstr, time):
         header = get_bytes(header_bstr)
         ip_header = header[14:34]
@@ -112,15 +117,16 @@ class Packet:
 
         self.src_ip = ip_header[12:16]
         self.dest_ip = ip_header[16:20]
-        self.src_port = tcp_header[0]*256 + tcp_header[1]
-        self.dest_port = tcp_header[2]*256 + tcp_header[3]
+        self.src_port = tcp_header[0] * 256 + tcp_header[1]
+        self.dest_port = tcp_header[2] * 256 + tcp_header[3]
         self.fin = tcp_flags[1] & 0x01
         self.syn = tcp_flags[1] & 0x02 >> 1
         self.rst = tcp_flags[1] & 0x04 >> 2
         self.time = time
-        self.sig = get_sig(self.src_ip, self.dest_ip, self.src_port, self.dest_port)
+        self.sig = get_sig(self.src_ip, self.dest_ip,
+                           self.src_port, self.dest_port)
         self.data_len = tcp_header[14:16]
-    
+
     def print_packet(self):
         """Print packet info to assignment spec"""
         print('TODO: print packet info {}'.format(self.src_ip))
@@ -146,6 +152,7 @@ def get_sig(ip1, ip2, port1, port2):
         return "{}{}{}{}".format(ip1_str, ip2_str, port1, port2)
     return "{}{}{}{}".format(ip2_str, ip1_str, port2, port1)
 
+
 if __name__ == '__main__':
     try:
         # pylint: disable=E1101
@@ -158,14 +165,12 @@ if __name__ == '__main__':
 
     while True:
         header_info, header_data = cap.next()
-        if (header_info is None):
+        if header_info is None:
             break
-        
+
         session.consume_packet(header_data, header_info.getts())
 
     for c in session.connections:
         print(c)
     for c in session.connections:
-        session.connections[c].print_state() 
-
-    
+        session.connections[c].print_state()
