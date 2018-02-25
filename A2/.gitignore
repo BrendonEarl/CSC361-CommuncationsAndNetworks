@@ -1,0 +1,5 @@
+.DS_STORE
+docs.html
+*.pcap
+pcapy-master/**/*
+.vscode
