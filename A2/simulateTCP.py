@@ -18,15 +18,20 @@ class Session:
 
     def __str__(self):
         """Print session summary"""
+        c_count_total = len(self.order)
+        c_count_fin = sum(
+            1 for c_id in self.connections if self.connections[c_id].fin > 0)
+        c_coutn_rst = sum(
+            1 for c_id in self.connections if self.connections[c_id].rst > 0)
+
         output = ""
-        output += "A) Total number of connections: {}\n".format(
-            len(self.connections))
+        output += "A) Total number of connections: {}\n".format(c_count_total)
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
 
         output += "B) Connections' details:\n\n"
-        for connection_id in self.order[:-1]:
-            output += str(self.connections[connection_id])
+        for c_id in self.order[:-1]:
+            output += str(self.connections[c_id])
             output += ("+++++++++++++++++++++++++++++++++\n.\n.\n.\n" +
                        "+++++++++++++++++++++++++++++++++\n")
         output += str(self.connections[self.order[-1]])
@@ -34,14 +39,15 @@ class Session:
                    "--------------------------------------------------------\n")
 
         output += "C) General\n"
-        output += "Total number of complete TCP connections: TBD\n"
-        output += "Number of reset TCP connections: TBD\n"
+        output += "Total number of complete TCP connections: {}\n".format(
+            c_count_fin)
+        output += "Number of reset TCP connections: {}\n".format(c_coutn_rst)
         output += ("Number of TCP connections that were still open when the trace capture " +
-                   "ended: TBD\n")
+                   "ended: {}\n".format(c_count_total - c_count_fin))
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
 
-        output += "D) Complete TCP connections: TBD\n"
+        output += "D) Complete TCP connections:\n"
         output += "Minimum time duration: Mean time duration: Maximum time duration: TBD\n"
         output += "Minimum RTT value: Mean RTT value: Maximum RTT value: TBD\n"
         output += ("Minimum number of packets including both send/received: Mean number of " +
