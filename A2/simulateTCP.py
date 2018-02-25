@@ -14,6 +14,41 @@ class Session:
     def __init__(self):
         """Initialize connections dictionary"""
         self.connections = {}
+        self.order = []
+
+    def __str__(self):
+        """Print session summary"""
+        output = ""
+        output += "A) Total number of connections: {}\n".format(
+            len(self.connections))
+        output += ("----------------------------------------------------" +
+                   "--------------------------------------------------------\n")
+
+        output += "B) Connections' details:\n\n"
+        for connection_id in self.order[:-1]:
+            output += str(self.connections[connection_id])
+            output += "+++++++++++++++++++++++++++++++++\n.\n.\n.\n+++++++++++++++++++++++++++++++++\n"
+        output += str(self.connections[self.order[-1]])
+        output += ("----------------------------------------------------" +
+                   "--------------------------------------------------------\n")
+
+        output += "C) General\n"
+        output += "Total number of complete TCP connections: TBD\n"
+        output += "Number of reset TCP connections: TBD\n"
+        output += "Number of TCP connections that were still open when the trace capture ended: TBD\n"
+        output += ("----------------------------------------------------" +
+                   "--------------------------------------------------------\n")
+
+        output += "D) Complete TCP connections: TBD\n"
+        output += "Minimum time duration: Mean time duration: Maximum time duration: TBD\n"
+        output += "Minimum RTT value: Mean RTT value: Maximum RTT value: TBD\n"
+        output += ("Minimum number of packets including both send/received: Mean number of packets including" +
+                   "both send/received: Maximum number of packets including both send/received: TBD\n")
+        output += ("Minimum receive window size including both send/received: Mean receive window size including" +
+                   "both send/received: Maximum receive window size including both send/received: TBD\n")
+        output += ("----------------------------------------------------" +
+                   "--------------------------------------------------------\n")
+        return output
 
     def consume_packet(self, header_bstr, packet_time):
         """
@@ -31,11 +66,14 @@ class Session:
         # If new connection must created
         else:
             self.connections[new_packet.sig] = Connection(new_packet)
+            self.order.append(new_packet.sig)
 
         # Archive connection if an end time has been associated
         if self.connections[new_packet.sig].end_time is not None:
-            self.connections["{}-c{}".format(new_packet.sig, new_packet.time)] = \
-                self.connections.pop(new_packet.sig)
+            self.connections["{}-c{}".format(new_packet.sig, new_packet.time)
+                             ] = self.connections.pop(new_packet.sig)
+            self.order = ["{}-c{}".format(new_packet.sig, new_packet.time)
+                          if id == new_packet.sig else id for id in self.order]
 
 
 class Connection:
@@ -60,6 +98,31 @@ class Connection:
         self.fin = 0
         self.rst = 0
         self.packets = []
+
+    def __str__(self):
+        """Print state of connection"""
+        output = ""
+        output += "Source Address: TBD\n"
+        output += "Destination Address: TBD\n"
+        output += "Source Port: TBD\n"
+        output += "Destination Port: TBD\n"
+        output += "Status: {}\n".format("S{}F{}".format(self.syn, self.fin))
+        if self.rst == 1:
+            output += "R\n"
+        if self.syn == 0 and self.fin == 0:
+            output += "{}\n".format(len(self.packets))
+        if self.fin > 0:
+            output += "Start Time: TBD\n"
+            output += "End Time: TBD\n"
+            output += "Duration: TBD\n"
+            output += "Number of packets sent from source to destination: TBD\n"
+            output += "Number of packets sent from destination to source: TBD\n"
+            output += "Total number of packets: TBD\n"
+            output += "Number of data bytes sent from source to destination: TBD\n"
+            output += "Number of data bytes sent from destination to source: TBD\n"
+            output += "Total number of data bytes: TBD\n"
+        output += "END\n"
+        return output
 
     def close_connection(self, end_time):
         """Marks connection as closed by associating an end time"""
@@ -97,14 +160,6 @@ class Connection:
         #     self.close_connection(packet.time)
         self.packets.append(packet)
 
-    def print_state(self):
-        """Print state of connection"""
-        if self.rst == 1:
-            print("R")
-        print("S{}F{}".format(self.syn, self.fin))
-        if self.syn == 0 and self.fin == 0:
-            print(len(self.packets))
-
 
 class Packet:
     """Parsed packet"""
@@ -113,7 +168,6 @@ class Packet:
         header = get_bytes(header_bstr)
         ip_header = header[14:34]
         tcp_header = header[34:]
-        print(len(tcp_header))
         tcp_flags = tcp_header[12:14]
 
         self.src_ip = ip_header[12:16]
@@ -171,8 +225,4 @@ if __name__ == '__main__':
 
         session.consume_packet(header_data, header_info.getts())
 
-    for c in session.connections:
-        print(c)
-    for c in session.connections:
-        session.connections[c].print_state()
-    print(len(session.connections))
+    print(session)
