@@ -27,7 +27,8 @@ class Session:
         output += "B) Connections' details:\n\n"
         for connection_id in self.order[:-1]:
             output += str(self.connections[connection_id])
-            output += "+++++++++++++++++++++++++++++++++\n.\n.\n.\n+++++++++++++++++++++++++++++++++\n"
+            output += ("+++++++++++++++++++++++++++++++++\n.\n.\n.\n" +
+                       "+++++++++++++++++++++++++++++++++\n")
         output += str(self.connections[self.order[-1]])
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
@@ -35,17 +36,20 @@ class Session:
         output += "C) General\n"
         output += "Total number of complete TCP connections: TBD\n"
         output += "Number of reset TCP connections: TBD\n"
-        output += "Number of TCP connections that were still open when the trace capture ended: TBD\n"
+        output += ("Number of TCP connections that were still open when the trace capture " +
+                   "ended: TBD\n")
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
 
         output += "D) Complete TCP connections: TBD\n"
         output += "Minimum time duration: Mean time duration: Maximum time duration: TBD\n"
         output += "Minimum RTT value: Mean RTT value: Maximum RTT value: TBD\n"
-        output += ("Minimum number of packets including both send/received: Mean number of packets including" +
-                   "both send/received: Maximum number of packets including both send/received: TBD\n")
-        output += ("Minimum receive window size including both send/received: Mean receive window size including" +
-                   "both send/received: Maximum receive window size including both send/received: TBD\n")
+        output += ("Minimum number of packets including both send/received: Mean number of " +
+                   "packets including both send/received: Maximum number of packets including " +
+                   "both send/received: TBD\n")
+        output += ("Minimum receive window size including both send/received: Mean receive " +
+                   "window size including both send/received: Maximum receive window size " +
+                   "including both send/received: TBD\n")
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
         return output
