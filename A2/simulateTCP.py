@@ -100,7 +100,7 @@ class Connection:
         self.ip2 = packet.dest_ip
         self.port1 = packet.src_port
         self.port2 = packet.dest_port
-        self.start_time = packet.time
+        self.start_time = None
         self.end_time = None
         self.pkts_1 = 0
         self.pkts_2 = 0
@@ -108,6 +108,8 @@ class Connection:
         self.fin = 0
         self.rst = 0
         self.packets = []
+        self.syn_wo_ack = []
+        self.rtts = []
 
     def __str__(self):
         """Print state of connection"""
@@ -121,15 +123,14 @@ class Connection:
                         for packet in self.packets if packet.src_ip == dest_ip)
 
         output = ""
-        output += "Source Address: {}\n".format(".".join(str(e)
-                                                         for e in src_ip))
+        output += "Source Address: {}\n".format(
+            ".".join(str(e) for e in src_ip))
         output += "Destination Address: {}\n".format(
             ".".join(str(e) for e in dest_ip))
         output += "Source Port: {}\n".format(src_port)
         output += "Destination Port: {}\n".format(dest_port)
-        output += "Status: {}\n".format("S{}F{}".format(self.syn, self.fin))
-        if self.rst == 1:
-            output += "R\n"
+        output += "Status: {}{}\n".format("S{}F{}".format(
+            self.syn, self.fin), " + R" if self.rst != 0 else "")
         if self.fin > 0:
             output += "Start Time: {}\n".format(
                 self.packets[0].time - self.start_time)
@@ -179,12 +180,14 @@ class Connection:
         # Track if flag has been set
         if packet.fin == 1:
             self.fin += 1
+            self.end_time = packet.time
         if packet.syn == 1:
             self.syn += 1
+            if self.start_time is None:
+                self.start_time == packet.time
         if packet.rst == 1:
             self.rst += 1
-        # if packet.fin == 2:
-        #     self.close_connection(packet.time)
+
         self.packets.append(packet)
 
 
@@ -204,6 +207,7 @@ class Packet:
         self.fin = tcp_flags[1] & 0x01
         self.syn = tcp_flags[1] & 0x02 >> 1
         self.rst = tcp_flags[1] & 0x04 >> 2
+        self.ack = tcp_flags[1] & 0x10 >> 4
         self.time = time[0] + time[1] * 0.0000001
         self.sig = get_sig(self.src_ip, self.dest_ip,
                            self.src_port, self.dest_port)
