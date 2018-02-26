@@ -14,11 +14,11 @@ class Session:
     def __init__(self):
         """Initialize connections dictionary"""
         self.connections = {}
-        self.order = []
+        self.conn_order = []
 
     def __str__(self):
         """Print session summary"""
-        c_count_total = len(self.order)
+        c_count_total = len(self.conn_order)
         c_count_fin = sum(
             1 for c_id in self.connections if self.connections[c_id].fin > 0)
         c_coutn_rst = sum(
@@ -30,11 +30,11 @@ class Session:
                    "--------------------------------------------------------\n")
 
         output += "B) Connections' details:\n\n"
-        for c_id in self.order[:-1]:
+        for c_id in self.conn_order[:-1]:
             output += str(self.connections[c_id])
             output += ("+++++++++++++++++++++++++++++++++\n.\n.\n.\n" +
                        "+++++++++++++++++++++++++++++++++\n")
-        output += str(self.connections[self.order[-1]])
+        output += str(self.connections[self.conn_order[-1]])
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
 
@@ -76,14 +76,14 @@ class Session:
         # If new connection must created
         else:
             self.connections[new_packet.sig] = Connection(new_packet)
-            self.order.append(new_packet.sig)
+            self.conn_order.append(new_packet.sig)
 
         # Archive connection if an end time has been associated
         if self.connections[new_packet.sig].end_time is not None:
             self.connections["{}-c{}".format(new_packet.sig, new_packet.time)
                              ] = self.connections.pop(new_packet.sig)
-            self.order = ["{}-c{}".format(new_packet.sig, new_packet.time)
-                          if id == new_packet.sig else id for id in self.order]
+            self.conn_order = ["{}-c{}".format(new_packet.sig, new_packet.time)
+                               if id == new_packet.sig else id for id in self.conn_order]
 
 
 class Connection:
@@ -111,26 +111,43 @@ class Connection:
 
     def __str__(self):
         """Print state of connection"""
+        src_ip = self.packets[0].src_ip
+        dest_ip = self.packets[0].dest_ip
+        src_port = self.packets[0].src_port
+        dest_port = self.packets[0].dest_port
+        src_data = sum(packet.data_len[0] * 16 + packet.data_len[1]
+                       for packet in self.packets if packet.src_ip == src_ip)
+        dest_data = sum(packet.data_len[0] * 16 + packet.data_len[1]
+                        for packet in self.packets if packet.src_ip == dest_ip)
+
         output = ""
-        output += "Source Address: TBD\n"
-        output += "Destination Address: TBD\n"
-        output += "Source Port: TBD\n"
-        output += "Destination Port: TBD\n"
+        output += "Source Address: {}\n".format(".".join(str(e)
+                                                         for e in src_ip))
+        output += "Destination Address: {}\n".format(
+            ".".join(str(e) for e in dest_ip))
+        output += "Source Port: {}\n".format(src_port)
+        output += "Destination Port: {}\n".format(dest_port)
         output += "Status: {}\n".format("S{}F{}".format(self.syn, self.fin))
         if self.rst == 1:
             output += "R\n"
-        if self.syn == 0 and self.fin == 0:
-            output += "{}\n".format(len(self.packets))
         if self.fin > 0:
-            output += "Start Time: TBD\n"
-            output += "End Time: TBD\n"
-            output += "Duration: TBD\n"
-            output += "Number of packets sent from source to destination: TBD\n"
-            output += "Number of packets sent from destination to source: TBD\n"
-            output += "Total number of packets: TBD\n"
-            output += "Number of data bytes sent from source to destination: TBD\n"
-            output += "Number of data bytes sent from destination to source: TBD\n"
-            output += "Total number of data bytes: TBD\n"
+            output += "Start Time: {}\n".format(
+                self.packets[0].time - self.start_time)
+            output += "End Time: {}\n".format(
+                self.packets[-1].time - self.start_time)
+            output += "Duration: {}\n".format(
+                self.packets[-1].time - self.packets[0].time)
+            output += "Number of packets sent from source to destination: {}\n".format(
+                sum(1 for packet in self.packets if packet.src_ip == src_ip))
+            output += "Number of packets sent from destination to source: {}\n".format(
+                sum(1 for packet in self.packets if packet.src_ip == dest_ip))
+            output += "Total number of packets: {}\n".format(len(self.packets))
+            output += "Number of data bytes sent from source to destination: {}\n".format(
+                src_data)
+            output += "Number of data bytes sent from destination to source: {}\n".format(
+                dest_data)
+            output += "Total number of data bytes: {}\n".format(
+                src_data + dest_data)
         output += "END\n"
         return output
 
@@ -187,14 +204,10 @@ class Packet:
         self.fin = tcp_flags[1] & 0x01
         self.syn = tcp_flags[1] & 0x02 >> 1
         self.rst = tcp_flags[1] & 0x04 >> 2
-        self.time = time
+        self.time = time[0] + time[1] * 0.0000001
         self.sig = get_sig(self.src_ip, self.dest_ip,
                            self.src_port, self.dest_port)
         self.data_len = tcp_header[14:16]
-
-    def print_packet(self):
-        """Print packet info to assignment spec"""
-        print('TODO: print packet info {}'.format(self.src_ip))
 
 
 def get_bytes(bstring):
