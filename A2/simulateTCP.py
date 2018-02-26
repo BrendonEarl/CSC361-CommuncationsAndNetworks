@@ -58,6 +58,8 @@ class Session:
                    "including both send/received: TBD\n")
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
+        # for c_id in self.conn_order:
+        #     output += str(self.connections[c_id.rtts])
         return output
 
     def consume_packet(self, header_bstr, packet_time):
@@ -190,6 +192,16 @@ class Connection:
 
         self.packets.append(packet)
 
+    # self.seq_wo_ack.update({"".join(str(packet.seqn)): packet.time})
+
+    # if packet.ack == 1:
+    #     if "".join(str(packet.seqn)) in self.seq_wo_ack.keys():
+    #         self.rtts.append(
+    #             packet.time - self.seq_wo_ack["".join(str(packet.seqn))])
+    #         del self.seq_wo_ack["".join(str(packet.seqn))]
+    #     else:
+    #         print("ERROROROROR NO PACKET WITH THAT SYN IS HERE!?/?????")
+
 
 class Packet:
     """Parsed packet"""
@@ -204,6 +216,8 @@ class Packet:
         self.dest_ip = ip_header[16:20]
         self.src_port = tcp_header[0] * 256 + tcp_header[1]
         self.dest_port = tcp_header[2] * 256 + tcp_header[3]
+        # self.seqn = tcp_header[4:8]
+        # self.ackn = tcp_header[9:12]
         self.fin = tcp_flags[1] & 0x01
         self.syn = tcp_flags[1] & 0x02 >> 1
         self.rst = tcp_flags[1] & 0x04 >> 2
