@@ -50,15 +50,19 @@ class Session:
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
 
-        output += "D) Complete TCP connections:\n"
-        output += "Minimum time duration: Mean time duration: Maximum time duration: TBD\n"
-        output += "Minimum RTT value: Mean RTT value: Maximum RTT value: TBD\n"
-        output += ("Minimum number of packets including both send/received: Mean number of " +
-                   "packets including both send/received: Maximum number of packets including " +
-                   "both send/received: TBD\n")
-        output += ("Minimum receive window size including both send/received: Mean receive " +
-                   "window size including both send/received: Maximum receive window size " +
-                   "including both send/received: TBD\n")
+        output += "D) Complete TCP connections:\n\n"
+        output += "Minimum time duration: TBD\n"
+        output += "Mean time duration: TBD\n"
+        output += "Maximum time duration: TBD\n\n"
+        output += "Minimum RTT value: TBD\n"
+        output += "Mean RTT value: TBD\n"
+        output += "Maximum RTT value: TBD\n\n"
+        output += "Minimum number of packets including both send/received: TBD\n"
+        output += "Mean number of packets including both send/received: TBD\n"
+        output += "Maximum number of packets including both send/received: TBD\n\n"
+        output += "Minimum receive window size including both send/received: TBD\n"
+        output += "Mean receive window size including both send/received: TBD\n"
+        output += "Maximum receive window size including both send/received: TBD\n"
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
         # for c_id in self.conn_order:
@@ -108,7 +112,6 @@ class Connection:
         # TODO: consolodate some of these
         self.sig = get_sig(packet.src_ip, packet.dest_ip,
                            packet.src_port, packet.dest_port)
-        # print("{}:{} -> {}:{}".format(src_ip, src_port, dest_ip, dest_port))
         self.ip1 = packet.src_ip
         self.ip2 = packet.dest_ip
         self.port1 = packet.src_port
