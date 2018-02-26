@@ -15,6 +15,7 @@ class Session:
         """Initialize connections dictionary"""
         self.connections = {}
         self.conn_order = []
+        self.ref_time = None
 
     def __str__(self):
         """Print session summary"""
@@ -30,10 +31,12 @@ class Session:
                    "--------------------------------------------------------\n")
 
         output += "B) Connections' details:\n\n"
-        for c_id in self.conn_order[:-1]:
+        for index, c_id in enumerate(self.conn_order[:-1]):
+            output += "Connection {}:\n".format(index + 1)
             output += str(self.connections[c_id])
             output += ("+++++++++++++++++++++++++++++++++\n.\n.\n.\n" +
                        "+++++++++++++++++++++++++++++++++\n")
+        output += "Connection {}:\n".format(len(self.conn_order))
         output += str(self.connections[self.conn_order[-1]])
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
@@ -72,26 +75,34 @@ class Session:
         """
         # Init packet
         new_packet = Packet(header_bstr, packet_time)
+
+        # Set start time if very first packet
+        if self.ref_time is None:
+            self.ref_time = new_packet.time
+
         # If connection exists for packet
         if new_packet.sig in self.connections:
             self.connections[new_packet.sig].add_packet(new_packet)
         # If new connection must created
         else:
-            self.connections[new_packet.sig] = Connection(new_packet)
+            self.connections.update({
+                new_packet.sig: Connection(
+                    new_packet, self.ref_time)
+            })
             self.conn_order.append(new_packet.sig)
 
         # Archive connection if an end time has been associated
-        if self.connections[new_packet.sig].end_time is not None:
-            self.connections["{}-c{}".format(new_packet.sig, new_packet.time)
-                             ] = self.connections.pop(new_packet.sig)
-            self.conn_order = ["{}-c{}".format(new_packet.sig, new_packet.time)
-                               if id == new_packet.sig else id for id in self.conn_order]
+        # if self.connections[new_packet.sig].end_time is not None:
+        #     self.connections["{}-c{}".format(new_packet.sig, new_packet.time)
+        #                      ] = self.connections.pop(new_packet.sig)
+        #     self.conn_order = ["{}-c{}".format(new_packet.sig, new_packet.time)
+        #                        if id == new_packet.sig else id for id in self.conn_order]
 
 
 class Connection:
     """Connection between two specific services [ip:port]s"""
 
-    def __init__(self, packet):
+    def __init__(self, packet, sesh_start):
         # pylint: disable=too-many-instance-attributes
         # 13 is reasonable without breaking them into dicts
         # TODO: consolodate some of these
@@ -102,6 +113,7 @@ class Connection:
         self.ip2 = packet.dest_ip
         self.port1 = packet.src_port
         self.port2 = packet.dest_port
+        self.sesh_start = sesh_start
         self.start_time = None
         self.end_time = None
         self.pkts_1 = 0
@@ -110,8 +122,10 @@ class Connection:
         self.fin = 0
         self.rst = 0
         self.packets = []
-        self.syn_wo_ack = []
+        self.syn_wo_ack = {}
         self.rtts = []
+
+        self.add_packet(packet)
 
     def __str__(self):
         """Print state of connection"""
@@ -134,12 +148,9 @@ class Connection:
         output += "Status: {}{}\n".format("S{}F{}".format(
             self.syn, self.fin), " + R" if self.rst != 0 else "")
         if self.fin > 0:
-            output += "Start Time: {}\n".format(
-                self.packets[0].time - self.start_time)
-            output += "End Time: {}\n".format(
-                self.packets[-1].time - self.start_time)
-            output += "Duration: {}\n".format(
-                self.packets[-1].time - self.packets[0].time)
+            output += "Start Time: {}\n".format(self.start_time)
+            output += "End Time: {}\n".format(self.end_time)
+            output += "Duration: {}\n".format(self.end_time - self.start_time)
             output += "Number of packets sent from source to destination: {}\n".format(
                 sum(1 for packet in self.packets if packet.src_ip == src_ip))
             output += "Number of packets sent from destination to source: {}\n".format(
@@ -154,18 +165,18 @@ class Connection:
         output += "END\n"
         return output
 
-    def close_connection(self, end_time):
-        """Marks connection as closed by associating an end time"""
-        if self.end_time is not None:
-            print("Connection already closed")
-            return
-        self.end_time = end_time
+    # def close_connection(self, end_time):
+    #     """Marks connection as closed by associating an end time"""
+    #     if self.end_time is not None:
+    #         print("Connection already closed")
+    #         return
+    #     self.end_time = end_time
 
-    def get_duration(self):
-        """Return duration of connection"""
-        if self.end_time is None:
-            return None
-        return self.end_time - self.start_time
+    # def get_duration(self):
+    #     """Return duration of connection"""
+    #     if self.end_time is None:
+    #         return None
+    #     return self.end_time - self.start_time
 
     def add_packet(self, packet):
         """Add packet to connection"""
@@ -182,25 +193,24 @@ class Connection:
         # Track if flag has been set
         if packet.fin == 1:
             self.fin += 1
-            self.end_time = packet.time
+            self.end_time = packet.time - self.sesh_start
         if packet.syn == 1:
             self.syn += 1
             if self.start_time is None:
-                self.start_time == packet.time
+                self.start_time = packet.time - self.sesh_start
         if packet.rst == 1:
             self.rst += 1
 
         self.packets.append(packet)
 
-    # self.seq_wo_ack.update({"".join(str(packet.seqn)): packet.time})
-
-    # if packet.ack == 1:
-    #     if "".join(str(packet.seqn)) in self.seq_wo_ack.keys():
-    #         self.rtts.append(
-    #             packet.time - self.seq_wo_ack["".join(str(packet.seqn))])
-    #         del self.seq_wo_ack["".join(str(packet.seqn))]
-    #     else:
-    #         print("ERROROROROR NO PACKET WITH THAT SYN IS HERE!?/?????")
+        # self.seq_wo_ack.update({"".join(str(packet.seqn)): packet.time})
+        # if packet.ack == 1:
+        #     if "".join(str(packet.seqn)) in self.seq_wo_ack.keys():
+        #         self.rtts.append(
+        #             packet.time - self.seq_wo_ack["".join(str(packet.seqn))])
+        #         del self.seq_wo_ack["".join(str(packet.seqn))]
+        #     else:
+        #         print("ERROROROROR NO PACKET WITH THAT SYN IS HERE!?/?????")
 
 
 class Packet:
@@ -216,12 +226,12 @@ class Packet:
         self.dest_ip = ip_header[16:20]
         self.src_port = tcp_header[0] * 256 + tcp_header[1]
         self.dest_port = tcp_header[2] * 256 + tcp_header[3]
-        # self.seqn = tcp_header[4:8]
-        # self.ackn = tcp_header[9:12]
-        self.fin = tcp_flags[1] & 0x01
-        self.syn = tcp_flags[1] & 0x02 >> 1
-        self.rst = tcp_flags[1] & 0x04 >> 2
-        self.ack = tcp_flags[1] & 0x10 >> 4
+        self.seqn = tcp_header[4:8]
+        self.ackn = tcp_header[9:12]
+        self.fin = (tcp_flags[1] & 0x01)
+        self.syn = (tcp_flags[1] & 0x02) >> 1
+        self.rst = (tcp_flags[1] & 0x04) >> 2
+        self.ack = (tcp_flags[1] & 0x10) >> 4
         self.time = time[0] + time[1] * 0.0000001
         self.sig = get_sig(self.src_ip, self.dest_ip,
                            self.src_port, self.dest_port)
@@ -238,15 +248,15 @@ def get_bytes(bstring):
 
 def get_sig(ip1, ip2, port1, port2):
     """Find unique sig for ip/port combination"""
-    ip1_str = ''.join(str(seg) for seg in ip1)
-    ip2_str = ''.join(str(seg) for seg in ip2)
+    ip1_str = '.'.join(str(seg) for seg in ip1)
+    ip2_str = '.'.join(str(seg) for seg in ip2)
     if ip1_str < ip2_str:
-        return "{}{}{}{}".format(ip1_str, ip2_str, port1, port2)
+        return "{}:{}->{}:{}".format(ip1_str, port1, ip2_str, port2)
     elif ip1_str > ip2_str:
-        return "{}{}{}{}".format(ip2_str, ip1_str, port2, port1)
+        return "{}:{}->{}:{}".format(ip2_str, port2, ip1_str, port1)
     elif port1 < port2:
-        return "{}{}{}{}".format(ip1_str, ip2_str, port1, port2)
-    return "{}{}{}{}".format(ip2_str, ip1_str, port2, port1)
+        return "{}:{}->{}:{}".format(ip1_str, port1, ip2_str, port2)
+    return "{}:{}->{}:{}".format(ip2_str, port2, ip1_str, port1)
 
 
 if __name__ == '__main__':
