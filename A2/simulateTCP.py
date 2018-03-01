@@ -51,7 +51,8 @@ class Session:
                    "--------------------------------------------------------\n")
 
         output += "D) Complete TCP connections:\n\n"
-        output += "Minimum time duration: TBD\n"
+        output += "Minimum time duration: {}\n".format(min(
+            self.connections[c_id].end_time - self.connections[c_id].start_time for c_id in self.connections if self.connections[c_id].end_time != None))
         output += "Mean time duration: TBD\n"
         output += "Maximum time duration: TBD\n\n"
         output += "Minimum RTT value: TBD\n"
@@ -125,7 +126,7 @@ class Connection:
         self.fin = 0
         self.rst = 0
         self.packets = []
-        self.syn_wo_ack = {}
+        self.seq_wo_ack = {}
         self.rtts = []
 
         self.add_packet(packet)
@@ -136,10 +137,10 @@ class Connection:
         dest_ip = self.packets[0].dest_ip
         src_port = self.packets[0].src_port
         dest_port = self.packets[0].dest_port
-        src_data = sum(packet.data_len[0] * 16 + packet.data_len[1]
-                       for packet in self.packets if packet.src_ip == src_ip)
-        dest_data = sum(packet.data_len[0] * 16 + packet.data_len[1]
-                        for packet in self.packets if packet.src_ip == dest_ip)
+        src_data = sum(
+            packet.data_len for packet in self.packets if packet.src_ip == src_ip)
+        dest_data = sum(
+            packet.data_len for packet in self.packets if packet.src_ip == dest_ip)
 
         output = ""
         output += "Source Address: {}\n".format(
@@ -166,6 +167,9 @@ class Connection:
             output += "Total number of data bytes: {}\n".format(
                 src_data + dest_data)
         output += "END\n"
+        # output += str(self.seq_wo_ack)
+        output += '\n'
+        output += str(self.rtts)
         return output
 
     # def close_connection(self, end_time):
@@ -206,14 +210,17 @@ class Connection:
 
         self.packets.append(packet)
 
-        # self.seq_wo_ack.update({"".join(str(packet.seqn)): packet.time})
-        # if packet.ack == 1:
-        #     if "".join(str(packet.seqn)) in self.seq_wo_ack.keys():
-        #         self.rtts.append(
-        #             packet.time - self.seq_wo_ack["".join(str(packet.seqn))])
-        #         del self.seq_wo_ack["".join(str(packet.seqn))]
-        #     else:
-        #         print("ERROROROROR NO PACKET WITH THAT SYN IS HERE!?/?????")
+        if str(packet.seqn + packet.data_len) in self.seq_wo_ack:
+            print("already here ######################################################%")
+        self.seq_wo_ack.update({str(packet.seqn + packet.data_len): packet.time})
+        if packet.ack == 1:
+            if str(packet.ackn) in self.seq_wo_ack:
+                print("popping off seq")
+                self.rtts.append(
+                    packet.time - self.seq_wo_ack[str(packet.ackn)])
+                del self.seq_wo_ack[str(packet.ackn)]
+            else:
+                print("ERROROROROR NO PACKET WITH THAT SEQ IS HERE!?/?????")
 
 
 class Packet:
@@ -229,8 +236,10 @@ class Packet:
         self.dest_ip = ip_header[16:20]
         self.src_port = tcp_header[0] * 256 + tcp_header[1]
         self.dest_port = tcp_header[2] * 256 + tcp_header[3]
-        self.seqn = tcp_header[4:8]
-        self.ackn = tcp_header[9:12]
+        self.seqn = tcp_header[4] * 16777216 + tcp_header[5] * \
+            65536 + tcp_header[6] * 256 + tcp_header[7]
+        self.ackn = tcp_header[8] * 16777216 + tcp_header[9] * \
+            65536 + tcp_header[10] * 256 + tcp_header[11]
         self.fin = (tcp_flags[1] & 0x01)
         self.syn = (tcp_flags[1] & 0x02) >> 1
         self.rst = (tcp_flags[1] & 0x04) >> 2
@@ -238,7 +247,8 @@ class Packet:
         self.time = time[0] + time[1] * 0.0000001
         self.sig = get_sig(self.src_ip, self.dest_ip,
                            self.src_port, self.dest_port)
-        self.data_len = tcp_header[14:16]
+        self.data_len = len(tcp_header) - \
+            int(((tcp_header[12] & 0xF0) >> 4) * 4)
 
 
 def get_bytes(bstring):
