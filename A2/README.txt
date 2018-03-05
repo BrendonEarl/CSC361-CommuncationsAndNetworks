@@ -9,7 +9,11 @@ Course: CSC 361 (Communication Networks)
 Assignment: #2 - TCP Traffic Analysis  
 
 ## How to use this thing
-Ensure you have __python3.6__ installed  
+Ensure you have __python3.6__ installed.  
+As this application does have dependencies, 
+ensure you install `pcapy` version `0.11` or higher. 
+Depending on you environment you can do this using `pip3`, `pypi` or other package managers.  
+If your setup uses `pip3` run `pip3 install pcapy`, and you should be good to go.  
 Then, depending on your configutation run either:  
 
 `python simulateTCP <pcap_file_location>` or  
