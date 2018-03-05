@@ -54,11 +54,11 @@ class Session:
                           .start_time for c_id in self.connections
                           if self.connections[c_id].end_time != None]
         all_packet_rtts = [
-            rtt for rtt in self.connections[c_id].rtts for c_id in self.connections]
+            rtt for c_id in self.connections for rtt in self.connections[c_id].rtts]
         all_conn_packet_count = [
             len(self.connections[c_id].packets) for c_id in self.connections]
         all_packet_window_size = [
-            packet.window for packet in self.connections[c_id].packets for c_id in self.connections]
+            packet.window for c_id in self.connections for packet in self.connections[c_id].packets]
 
         output += "D) Complete TCP connections:\n\n"
 
@@ -235,7 +235,7 @@ class Connection:
         self.packets.append(packet)
 
         # if str(packet.seqn + packet.data_len) in self.seq_wo_ack:
-            # print("already here ######################################################%")
+        # print("already here ######################################################%")
         self.seq_wo_ack.update(
             {str(packet.seqn + packet.data_len): packet.time})
 
@@ -273,6 +273,8 @@ class Packet:
         self.data_len = len(tcp_header) - \
             int(((tcp_header[12] & 0xF0) >> 4)) * 4
         self.window = tcp_header[14] * 256 + tcp_header[15]
+        if (self.window == 0):
+            print("emmpttyyyy windowww")
         self.time = time[0] + time[1] * 0.0000001
         self.sig = get_sig(self.src_ip, self.dest_ip,
                            self.src_port, self.dest_port)
