@@ -50,20 +50,41 @@ class Session:
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
 
+        all_conn_times = [self.connections[c_id].end_time - self.connections[c_id]
+                          .start_time for c_id in self.connections
+                          if self.connections[c_id].end_time != None]
+        all_packet_rtts = [
+            rtt for rtt in self.connections[c_id].rtts for c_id in self.connections]
+        all_conn_packet_count = [
+            len(self.connections[c_id].packets) for c_id in self.connections]
+        all_packet_window_size = [
+            packet.window for packet in self.connections[c_id].packets for c_id in self.connections]
+
         output += "D) Complete TCP connections:\n\n"
-        output += "Minimum time duration: {}\n".format(min(
-            self.connections[c_id].end_time - self.connections[c_id].start_time for c_id in self.connections if self.connections[c_id].end_time != None))
-        output += "Mean time duration: TBD\n"
-        output += "Maximum time duration: TBD\n\n"
-        output += "Minimum RTT value: TBD\n"
-        output += "Mean RTT value: TBD\n"
-        output += "Maximum RTT value: TBD\n\n"
-        output += "Minimum number of packets including both send/received: TBD\n"
-        output += "Mean number of packets including both send/received: TBD\n"
-        output += "Maximum number of packets including both send/received: TBD\n\n"
-        output += "Minimum receive window size including both send/received: TBD\n"
-        output += "Mean receive window size including both send/received: TBD\n"
-        output += "Maximum receive window size including both send/received: TBD\n"
+
+        output += "Minimum time duration: {}\n".format(min(all_conn_times))
+        output += "Mean time duration: {}\n".format(
+            float(sum(all_conn_times) / len(all_conn_times)))
+        output += "Maximum time duration: {}\n\n".format(max(all_conn_times))
+
+        output += "Minimum RTT value: {}\n".format(min(all_packet_rtts))
+        output += "Mean RTT value: {}\n".format(
+            float(sum(all_packet_rtts) / len(all_packet_rtts)))
+        output += "Maximum RTT value: {}\n\n".format(max(all_packet_rtts))
+
+        output += "Minimum number of packets including both send/received: {}\n".format(
+            min(all_conn_packet_count))
+        output += "Mean number of packets including both send/received: {}\n".format(
+            float(sum(all_conn_packet_count) / len(all_conn_packet_count)))
+        output += "Maximum number of packets including both send/received: {}\n\n".format(
+            max(all_conn_packet_count))
+
+        output += "Minimum receive window size including both send/received: {}\n".format(
+            min(all_packet_window_size))
+        output += "Mean receive window size including both send/received: {}\n".format(
+            float(sum(all_packet_window_size) / len(all_packet_window_size)))
+        output += "Maximum receive window size including both send/received: {}\n".format(
+            max(all_packet_window_size))
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
         # for c_id in self.conn_order:
@@ -99,9 +120,9 @@ class Session:
         # Archive connection if an end time has been associated
         # if self.connections[new_packet.sig].end_time is not None:
         #     self.connections["{}-c{}".format(new_packet.sig, new_packet.time)
-        #                      ] = self.connections.pop(new_packet.sig)
+        #                     ] = self.connections.pop(new_packet.sig)
         #     self.conn_order = ["{}-c{}".format(new_packet.sig, new_packet.time)
-        #                        if id == new_packet.sig else id for id in self.conn_order]
+        #                     if id == new_packet.sig else id for id in self.conn_order]
 
 
 class Connection:
@@ -151,10 +172,13 @@ class Connection:
         output += "Destination Port: {}\n".format(dest_port)
         output += "Status: {}{}\n".format("S{}F{}".format(
             self.syn, self.fin), " + R" if self.rst != 0 else "")
+        # If connection is parked as finished
         if self.fin > 0:
             output += "Start Time: {}\n".format(self.start_time)
             output += "End Time: {}\n".format(self.end_time)
             output += "Duration: {}\n".format(self.end_time - self.start_time)
+            # pylint: disable=E1101
+            # ^ (Instance of 'str' has no 'src_ip' member) - Packet(s) do have src_ip members
             output += "Number of packets sent from source to destination: {}\n".format(
                 sum(1 for packet in self.packets if packet.src_ip == src_ip))
             output += "Number of packets sent from destination to source: {}\n".format(
@@ -168,8 +192,8 @@ class Connection:
                 src_data + dest_data)
         output += "END\n"
         # output += str(self.seq_wo_ack)
-        output += '\n'
-        output += str(self.rtts)
+        # output += '\n'
+        # output += str(self.rtts)
         return output
 
     # def close_connection(self, end_time):
@@ -210,17 +234,19 @@ class Connection:
 
         self.packets.append(packet)
 
-        if str(packet.seqn + packet.data_len) in self.seq_wo_ack:
-            print("already here ######################################################%")
-        self.seq_wo_ack.update({str(packet.seqn + packet.data_len): packet.time})
+        # if str(packet.seqn + packet.data_len) in self.seq_wo_ack:
+            # print("already here ######################################################%")
+        self.seq_wo_ack.update(
+            {str(packet.seqn + packet.data_len): packet.time})
+
         if packet.ack == 1:
             if str(packet.ackn) in self.seq_wo_ack:
-                print("popping off seq")
+                # print("popping off seq")
                 self.rtts.append(
                     packet.time - self.seq_wo_ack[str(packet.ackn)])
                 del self.seq_wo_ack[str(packet.ackn)]
-            else:
-                print("ERROROROROR NO PACKET WITH THAT SEQ IS HERE!?/?????")
+            # else:
+            #     print("ERROROROROR NO PACKET WITH THAT SEQ IS HERE!?/?????")
 
 
 class Packet:
@@ -244,11 +270,12 @@ class Packet:
         self.syn = (tcp_flags[1] & 0x02) >> 1
         self.rst = (tcp_flags[1] & 0x04) >> 2
         self.ack = (tcp_flags[1] & 0x10) >> 4
+        self.data_len = len(tcp_header) - \
+            int(((tcp_header[12] & 0xF0) >> 4)) * 4
+        self.window = tcp_header[14] * 256 + tcp_header[15]
         self.time = time[0] + time[1] * 0.0000001
         self.sig = get_sig(self.src_ip, self.dest_ip,
                            self.src_port, self.dest_port)
-        self.data_len = len(tcp_header) - \
-            int(((tcp_header[12] & 0xF0) >> 4) * 4)
 
 
 def get_bytes(bstring):
@@ -276,17 +303,17 @@ if __name__ == '__main__':
     try:
         # pylint: disable=E1101
         # pcapy does have open_offline function
-        cap = pcapy.open_offline(sys.argv[1])
+        CAP = pcapy.open_offline(sys.argv[1])
     except IndexError:
         print("Please include pcap file name")
 
-    session = Session()
+    SESSION = Session()
 
     while True:
-        header_info, header_data = cap.next()
-        if header_info is None:
+        HEADER_INFO, HEADER_DATA = CAP.next()
+        if HEADER_INFO is None:
             break
 
-        session.consume_packet(header_data, header_info.getts())
+        SESSION.consume_packet(HEADER_DATA, HEADER_INFO.getts())
 
-    print(session)
+    print(SESSION)
