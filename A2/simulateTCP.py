@@ -19,17 +19,20 @@ class Session:
 
     def __str__(self):
         """Print session summary"""
+        # Calculate and define variables for later use
         c_count_total = len(self.conn_order)
         c_count_fin = sum(
             1 for c_id in self.connections if self.connections[c_id].fin > 0)
         c_coutn_rst = sum(
             1 for c_id in self.connections if self.connections[c_id].rst > 0)
 
+        # Output part A details
         output = ""
         output += "A) Total number of connections: {}\n".format(c_count_total)
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
 
+        # Output aprt B deatils
         output += "B) Connections' details:\n\n"
         for index, c_id in enumerate(self.conn_order[:-1]):
             output += "Connection {}:\n".format(index + 1)
@@ -41,6 +44,7 @@ class Session:
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
 
+        # Output part C details
         output += "C) General\n"
         output += "Total number of complete TCP connections: {}\n".format(
             c_count_fin)
@@ -50,6 +54,7 @@ class Session:
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
 
+        # Calculate variables for part D
         all_conn_times = [self.connections[c_id].end_time - self.connections[c_id]
                           .start_time for c_id in self.connections
                           if self.connections[c_id].end_time != None]
@@ -60,18 +65,21 @@ class Session:
         all_packet_window_size = [
             packet.window for c_id in self.connections for packet in self.connections[c_id].packets]
 
+        # Output part D details
         output += "D) Complete TCP connections:\n\n"
-
+        # Connection durations
         output += "Minimum time duration: {}\n".format(min(all_conn_times))
         output += "Mean time duration: {}\n".format(
             float(sum(all_conn_times) / len(all_conn_times)))
         output += "Maximum time duration: {}\n\n".format(max(all_conn_times))
 
+        # RTT stats
         output += "Minimum RTT value: {}\n".format(min(all_packet_rtts))
         output += "Mean RTT value: {}\n".format(
             float(sum(all_packet_rtts) / len(all_packet_rtts)))
         output += "Maximum RTT value: {}\n\n".format(max(all_packet_rtts))
 
+        # Packet counts
         output += "Minimum number of packets including both send/received: {}\n".format(
             min(all_conn_packet_count))
         output += "Mean number of packets including both send/received: {}\n".format(
@@ -79,6 +87,7 @@ class Session:
         output += "Maximum number of packets including both send/received: {}\n\n".format(
             max(all_conn_packet_count))
 
+        # Window size stats
         output += "Minimum receive window size including both send/received: {}\n".format(
             min(all_packet_window_size))
         output += "Mean receive window size including both send/received: {}\n".format(
@@ -87,8 +96,6 @@ class Session:
             max(all_packet_window_size))
         output += ("----------------------------------------------------" +
                    "--------------------------------------------------------\n")
-        # for c_id in self.conn_order:
-        #     output += str(self.connections[c_id.rtts])
         return output
 
     def consume_packet(self, header_bstr, packet_time):
@@ -116,13 +123,6 @@ class Session:
                     new_packet, self.ref_time)
             })
             self.conn_order.append(new_packet.sig)
-
-        # Archive connection if an end time has been associated
-        # if self.connections[new_packet.sig].end_time is not None:
-        #     self.connections["{}-c{}".format(new_packet.sig, new_packet.time)
-        #                     ] = self.connections.pop(new_packet.sig)
-        #     self.conn_order = ["{}-c{}".format(new_packet.sig, new_packet.time)
-        #                     if id == new_packet.sig else id for id in self.conn_order]
 
 
 class Connection:
@@ -154,6 +154,7 @@ class Connection:
 
     def __str__(self):
         """Print state of connection"""
+        # Calculate and define variables for later use
         src_ip = self.packets[0].src_ip
         dest_ip = self.packets[0].dest_ip
         src_port = self.packets[0].src_port
@@ -163,6 +164,7 @@ class Connection:
         dest_data = sum(
             packet.data_len for packet in self.packets if packet.src_ip == dest_ip)
 
+        # Detail IP, Port, and Status
         output = ""
         output += "Source Address: {}\n".format(
             ".".join(str(e) for e in src_ip))
@@ -172,7 +174,8 @@ class Connection:
         output += "Destination Port: {}\n".format(dest_port)
         output += "Status: {}{}\n".format("S{}F{}".format(
             self.syn, self.fin), " + R" if self.rst != 0 else "")
-        # If connection is parked as finished
+
+        # If connection is parked as finished output connection details
         if self.fin > 0:
             output += "Start Time: {}\n".format(self.start_time)
             output += "End Time: {}\n".format(self.end_time)
@@ -191,23 +194,14 @@ class Connection:
             output += "Total number of data bytes: {}\n".format(
                 src_data + dest_data)
         output += "END\n"
-        # output += str(self.seq_wo_ack)
-        # output += '\n'
-        # output += str(self.rtts)
+
         return output
 
-    # def close_connection(self, end_time):
-    #     """Marks connection as closed by associating an end time"""
-    #     if self.end_time is not None:
-    #         print("Connection already closed")
-    #         return
-    #     self.end_time = end_time
-
-    # def get_duration(self):
-    #     """Return duration of connection"""
-    #     if self.end_time is None:
-    #         return None
-    #     return self.end_time - self.start_time
+    def get_duration(self):
+        """Return duration of connection"""
+        if self.end_time is None:
+            return None
+        return self.end_time - self.start_time
 
     def add_packet(self, packet):
         """Add packet to connection"""
@@ -221,7 +215,8 @@ class Connection:
             print("Attempted ip: {}".format(packet.src_ip))
             print("On connection between {} and {}".format(self.ip1, self.ip2))
             return
-        # Track if flag has been set
+
+        # Track details dependibng on set flags
         if packet.fin == 1:
             self.fin += 1
             self.end_time = packet.time - self.sesh_start
@@ -234,19 +229,14 @@ class Connection:
 
         self.packets.append(packet)
 
-        # if str(packet.seqn + packet.data_len) in self.seq_wo_ack:
-        # print("already here ######################################################%")
+        # Track acknowledged packets
         self.seq_wo_ack.update(
             {str(packet.seqn + packet.data_len): packet.time})
-
         if packet.ack == 1:
             if str(packet.ackn) in self.seq_wo_ack:
-                # print("popping off seq")
                 self.rtts.append(
                     packet.time - self.seq_wo_ack[str(packet.ackn)])
                 del self.seq_wo_ack[str(packet.ackn)]
-            # else:
-            #     print("ERROROROROR NO PACKET WITH THAT SEQ IS HERE!?/?????")
 
 
 class Packet:
@@ -273,8 +263,6 @@ class Packet:
         self.data_len = len(tcp_header) - \
             int(((tcp_header[12] & 0xF0) >> 4)) * 4
         self.window = tcp_header[14] * 256 + tcp_header[15]
-        if (self.window == 0):
-            print("emmpttyyyy windowww")
         self.time = time[0] + time[1] * 0.0000001
         self.sig = get_sig(self.src_ip, self.dest_ip,
                            self.src_port, self.dest_port)
