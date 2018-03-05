@@ -111,3 +111,8 @@ Maximum receive window size including both send/received: --
 ```
 
 __Happy Marking!__
+
+Disclaimer: I know I have not encapsulated objects as much as possible 
+(given the missing setters & private variables). Improvements could 
+be made, but given this is a course project with limited size & 
+will not be used for production, this shortcut has been taken.
