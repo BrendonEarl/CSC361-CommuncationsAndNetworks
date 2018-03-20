@@ -1,0 +1,19 @@
+The IP address of the source node: 192.168.1.12
+The IP address of ultimate destination node: 10.216.216.2
+The IP addresses of the intermediate destination nodes:
+    router 1: 24.218.01.102,
+    router 2: 24.221.10.103,
+    router 3: 10.215.118.1.
+
+The values in the protocol field of IP headers:
+    1: ICMP
+    17: UDP
+
+
+The number of fragments created from the original datagram is: 3
+The offset of the last fragment is: 3680
+
+The avg RRT between 192.168.1.12 and 24.218.01.102 is: 50 ms, the s.d. is: 5 ms
+The avg RRT between 192.168.1.12 and 24.221.10.103 is: 100 ms, the s.d. is: 6 ms
+The avg RRT between 192.168.1.12 and 10.215.118.1 is: 150 ms, the s.d. is: 5 ms
+The avg RRT between 192.168.1.12 and 10.216.216.2 is: 200 ms, the s.d. is: 15 ms
