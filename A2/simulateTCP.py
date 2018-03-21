@@ -22,9 +22,9 @@ class Session:
         # Calculate and define variables for later use
         c_count_total = len(self.conn_order)
         c_count_fin = sum(
-            1 for c_id in self.connections if self.connections[c_id].fin > 0)
+            1 for c_id in self.connections if self.connections[c_id].flags["fin"] > 0)
         c_coutn_rst = sum(
-            1 for c_id in self.connections if self.connections[c_id].rst > 0)
+            1 for c_id in self.connections if self.connections[c_id].flags["rst"] > 0)
 
         # Output part A details
         output = ""
@@ -129,23 +129,20 @@ class Connection:
     """Connection between two specific services [ip:port]s"""
 
     def __init__(self, packet, sesh_start):
-        # pylint: disable=too-many-instance-attributes
-        # 13 is reasonable without breaking them into dicts
-        # TODO: consolodate some of these
         self.sig = get_sig(packet.src_ip, packet.dest_ip,
                            packet.src_port, packet.dest_port)
-        self.ip1 = packet.src_ip
-        self.ip2 = packet.dest_ip
-        self.port1 = packet.src_port
-        self.port2 = packet.dest_port
+        self.ips = (packet.src_ip, packet.dest_ip)
+        self.ports = (packet.src_port, packet.dest_port)
         self.sesh_start = sesh_start
         self.start_time = None
         self.end_time = None
         self.pkts_1 = 0
         self.pkts_2 = 0
-        self.syn = 0
-        self.fin = 0
-        self.rst = 0
+        self.flags = {
+            "syn": 0,
+            "fin": 0,
+            "rst": 0,
+        }
         self.packets = []
         self.seq_wo_ack = {}
         self.rtts = []
@@ -155,10 +152,8 @@ class Connection:
     def __str__(self):
         """Print state of connection"""
         # Calculate and define variables for later use
-        src_ip = self.packets[0].src_ip
-        dest_ip = self.packets[0].dest_ip
-        src_port = self.packets[0].src_port
-        dest_port = self.packets[0].dest_port
+        src_ip, dest_ip = self.ips
+        src_port, dest_port = self.ports
         src_data = sum(
             packet.data_len for packet in self.packets if packet.src_ip == src_ip)
         dest_data = sum(
@@ -173,10 +168,10 @@ class Connection:
         output += "Source Port: {}\n".format(src_port)
         output += "Destination Port: {}\n".format(dest_port)
         output += "Status: {}{}\n".format("S{}F{}".format(
-            self.syn, self.fin), " + R" if self.rst != 0 else "")
+            self.flags["syn"], self.flags["fin"]), " + R" if self.flags["rst"] != 0 else "")
 
         # If connection is parked as finished output connection details
-        if self.fin > 0:
+        if self.flags["fin"] > 0:
             output += "Start Time: {}\n".format(self.start_time)
             output += "End Time: {}\n".format(self.end_time)
             output += "Duration: {}\n".format(self.end_time - self.start_time)
@@ -206,26 +201,27 @@ class Connection:
     def add_packet(self, packet):
         """Add packet to connection"""
         # Track direction of packet
-        if packet.src_ip == self.ip1:
+        if packet.src_ip == self.ips[0]:
             self.pkts_1 += 1
-        elif packet.src_ip == self.ip2:
+        elif packet.src_ip == self.ips[1]:
             self.pkts_2 += 1
         else:
             print("Wrong Connection:")
             print("Attempted ip: {}".format(packet.src_ip))
-            print("On connection between {} and {}".format(self.ip1, self.ip2))
+            print("On connection between {} and {}".format(
+                self.ips[0], self.ips[1]))
             return
 
         # Track details dependibng on set flags
         if packet.flags["fin"] == 1:
-            self.fin += 1
+            self.flags["fin"] += 1
             self.end_time = packet.time - self.sesh_start
         if packet.flags["syn"] == 1:
-            self.syn += 1
+            self.flags["syn"] += 1
             if self.start_time is None:
                 self.start_time = packet.time - self.sesh_start
         if packet.flags["rst"] == 1:
-            self.rst += 1
+            self.flags["rst"] += 1
 
         self.packets.append(packet)
 
