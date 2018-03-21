@@ -1,5 +1,5 @@
 """
-This method is to be called as main from the command line,
+This script is to be called as main from the command line,
 with a *.pcap file as the first and only argument.
 It parses the file, and creates a session (the capture session)
 with a series of sessions within, each tracking the packets apart of each
@@ -217,14 +217,14 @@ class Connection:
             return
 
         # Track details dependibng on set flags
-        if packet.fin == 1:
+        if packet.flags["fin"] == 1:
             self.fin += 1
             self.end_time = packet.time - self.sesh_start
-        if packet.syn == 1:
+        if packet.flags["syn"] == 1:
             self.syn += 1
             if self.start_time is None:
                 self.start_time = packet.time - self.sesh_start
-        if packet.rst == 1:
+        if packet.flags["rst"] == 1:
             self.rst += 1
 
         self.packets.append(packet)
@@ -232,7 +232,7 @@ class Connection:
         # Track acknowledged packets
         self.seq_wo_ack.update(
             {str(packet.seqn + packet.data_len): packet.time})
-        if packet.ack == 1:
+        if packet.flags["ack"] == 1:
             if str(packet.ackn) in self.seq_wo_ack:
                 self.rtts.append(
                     packet.time - self.seq_wo_ack[str(packet.ackn)])
@@ -256,10 +256,12 @@ class Packet:
             65536 + tcp_header[6] * 256 + tcp_header[7]
         self.ackn = tcp_header[8] * 16777216 + tcp_header[9] * \
             65536 + tcp_header[10] * 256 + tcp_header[11]
-        self.fin = (tcp_flags[1] & 0x01)
-        self.syn = (tcp_flags[1] & 0x02) >> 1
-        self.rst = (tcp_flags[1] & 0x04) >> 2
-        self.ack = (tcp_flags[1] & 0x10) >> 4
+        self.flags = {
+            "fin": (tcp_flags[1] & 0x01),
+            "syn": (tcp_flags[1] & 0x02) >> 1,
+            "rst": (tcp_flags[1] & 0x04) >> 2,
+            "ack": (tcp_flags[1] & 0x10) >> 4,
+        }
         self.data_len = len(tcp_header) - \
             int(((tcp_header[12] & 0xF0) >> 4)) * 4
         self.window = tcp_header[14] * 256 + tcp_header[15]
