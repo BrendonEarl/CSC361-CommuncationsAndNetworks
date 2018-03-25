@@ -4,11 +4,30 @@ with a *.pcap file as the first and only argument.
 It parses the file, and creates a session (the capture session)
 with a series of sessions within, each tracking the packets apart of each
 """
+from enum import Enum
 import sys
 import pcapy
 
-# NOTE code has been copied from my previous assignment as I designed it in a reusable fashion
 
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+
+class PacketError(Error):
+    """Exception raised for errors in the input.
+
+    Attributes:
+        packet -- input packet in which the error occurred
+        message -- explanation of the error
+    """
+
+    def __init__(self, packet, message):
+        self.packet = packet
+        self.message = message
+
+
+# NOTE code has been copied from my previous assignment as I designed it in a reusable fashion
 
 class Session:
     """Trace session"""
@@ -28,76 +47,77 @@ class Session:
         t_count_rst = sum(
             1 for t_id in self.traces if self.traces[t_id].flags["rst"] > 0)
 
-        # Output part A details
+        # Output
         output = ""
-        output += "A) Total number of traces: {}\n".format(t_count_total)
-        output += ("----------------------------------------------------" +
-                   "--------------------------------------------------------\n")
+        output += "The IP address of the source node: {}\n".format("TBD")
+        output += "The IP address of ultimate destination node: {}\n".format(
+            "TBD")
+        output += "The IP addresses of the intermediate destination nodes:\n"
 
-        # Output aprt B deatils
-        output += "B) Traces' details:\n\n"
-        for index, t_id in enumerate(self.trace_order[:-1]):
-            output += "Trace {}:\n".format(index + 1)
-            output += str(self.traces[t_id])
-            output += ("+++++++++++++++++++++++++++++++++\n.\n.\n.\n" +
-                       "+++++++++++++++++++++++++++++++++\n")
-        output += "Trace {}:\n".format(len(self.trace_order))
-        output += str(self.traces[self.trace_order[-1]])
-        output += ("----------------------------------------------------" +
-                   "--------------------------------------------------------\n")
+        # # Output aprt B deatils
+        # output += "B) Traces' details:\n\n"
+        # for index, t_id in enumerate(self.trace_order[:-1]):
+        #     output += "Trace {}:\n".format(index + 1)
+        #     output += str(self.traces[t_id])
+        #     output += ("+++++++++++++++++++++++++++++++++\n.\n.\n.\n" +
+        #                "+++++++++++++++++++++++++++++++++\n")
+        # output += "Trace {}:\n".format(len(self.trace_order))
+        # output += str(self.traces[self.trace_order[-1]])
+        # output += ("----------------------------------------------------" +
+        #            "--------------------------------------------------------\n")
 
-        # Output part C details
-        output += "C) General\n"
-        output += "Total number of complete TCP traces: {}\n".format(
-            t_count_fin)
-        output += "Number of reset TCP traces: {}\n".format(t_count_rst)
-        output += ("Number of TCP traces that were still open when the trace capture " +
-                   "ended: {}\n".format(t_count_total - t_count_fin))
-        output += ("----------------------------------------------------" +
-                   "--------------------------------------------------------\n")
+        # # Output part C details
+        # output += "C) General\n"
+        # output += "Total number of complete TCP traces: {}\n".format(
+        #     t_count_fin)
+        # output += "Number of reset TCP traces: {}\n".format(t_count_rst)
+        # output += ("Number of TCP traces that were still open when the trace capture " +
+        #            "ended: {}\n".format(t_count_total - t_count_fin))
+        # output += ("----------------------------------------------------" +
+        #            "--------------------------------------------------------\n")
 
-        # Calculate variables for part D
-        all_trace_times = [self.traces[t_id].end_time - self.traces[t_id]
-                           .start_time for t_id in self.traces
-                           if self.traces[t_id].end_time != None]
-        all_packet_rtts = [
-            rtt for t_id in self.traces for rtt in self.traces[t_id].rtts]
-        all_trace_packet_count = [
-            len(self.traces[t_id].packets) for t_id in self.traces]
-        all_packet_window_size = [
-            packet.window for t_id in self.traces for packet in self.traces[t_id].packets]
+        # # Calculate variables for part D
+        # all_trace_times = [self.traces[t_id].end_time - self.traces[t_id]
+        #                    .start_time for t_id in self.traces
+        #                    if self.traces[t_id].end_time != None]
+        # all_packet_rtts = [
+        #     rtt for t_id in self.traces for rtt in self.traces[t_id].rtts]
+        # all_trace_packet_count = [
+        #     len(self.traces[t_id].packets) for t_id in self.traces]
+        # all_packet_window_size = [
+        #     packet.window for t_id in self.traces for packet in self.traces[t_id].packets]
 
-        # Output part D details
-        output += "D) Complete TCP traces:\n\n"
-        # Traces durations
-        output += "Minimum time duration: {}\n".format(min(all_trace_times))
-        output += "Mean time duration: {}\n".format(
-            float(sum(all_trace_times) / len(all_trace_times)))
-        output += "Maximum time duration: {}\n\n".format(max(all_trace_times))
+        # # Output part D details
+        # output += "D) Complete TCP traces:\n\n"
+        # # Traces durations
+        # output += "Minimum time duration: {}\n".format(min(all_trace_times))
+        # output += "Mean time duration: {}\n".format(
+        #     float(sum(all_trace_times) / len(all_trace_times)))
+        # output += "Maximum time duration: {}\n\n".format(max(all_trace_times))
 
-        # RTT stats
-        output += "Minimum RTT value: {}\n".format(min(all_packet_rtts))
-        output += "Mean RTT value: {}\n".format(
-            float(sum(all_packet_rtts) / len(all_packet_rtts)))
-        output += "Maximum RTT value: {}\n\n".format(max(all_packet_rtts))
+        # # RTT stats
+        # output += "Minimum RTT value: {}\n".format(min(all_packet_rtts))
+        # output += "Mean RTT value: {}\n".format(
+        #     float(sum(all_packet_rtts) / len(all_packet_rtts)))
+        # output += "Maximum RTT value: {}\n\n".format(max(all_packet_rtts))
 
-        # Packet counts
-        output += "Minimum number of packets including both send/received: {}\n".format(
-            min(all_trace_packet_count))
-        output += "Mean number of packets including both send/received: {}\n".format(
-            float(sum(all_trace_packet_count) / len(all_trace_packet_count)))
-        output += "Maximum number of packets including both send/received: {}\n\n".format(
-            max(all_trace_packet_count))
+        # # Packet counts
+        # output += "Minimum number of packets including both send/received: {}\n".format(
+        #     min(all_trace_packet_count))
+        # output += "Mean number of packets including both send/received: {}\n".format(
+        #     float(sum(all_trace_packet_count) / len(all_trace_packet_count)))
+        # output += "Maximum number of packets including both send/received: {}\n\n".format(
+        #     max(all_trace_packet_count))
 
-        # Window size stats
-        output += "Minimum receive window size including both send/received: {}\n".format(
-            min(all_packet_window_size))
-        output += "Mean receive window size including both send/received: {}\n".format(
-            float(sum(all_packet_window_size) / len(all_packet_window_size)))
-        output += "Maximum receive window size including both send/received: {}\n".format(
-            max(all_packet_window_size))
-        output += ("----------------------------------------------------" +
-                   "--------------------------------------------------------\n")
+        # # Window size stats
+        # output += "Minimum receive window size including both send/received: {}\n".format(
+        #     min(all_packet_window_size))
+        # output += "Mean receive window size including both send/received: {}\n".format(
+        #     float(sum(all_packet_window_size) / len(all_packet_window_size)))
+        # output += "Maximum receive window size including both send/received: {}\n".format(
+        #     max(all_packet_window_size))
+        # output += ("----------------------------------------------------" +
+        #            "--------------------------------------------------------\n")
         return output
 
     def consume_packet(self, header_bstr, packet_time):
@@ -242,10 +262,12 @@ class Packet:
 
     def __init__(self, header_bstr, time):
         header = get_bytes(header_bstr)
+        eth_header = header[0:14]
         ip_header = header[14:34]
         tcp_header = header[34:]
         tcp_flags = tcp_header[12:14]
 
+        self.proto = eth_header[12] * 256 + eth_header[13]
         self.src_ip = ip_header[12:16]
         self.dest_ip = ip_header[16:20]
         self.src_port = tcp_header[0] * 256 + tcp_header[1]
@@ -266,6 +288,19 @@ class Packet:
         self.time = time[0] + time[1] * 0.0000001
         self.sig = get_sig(self.src_ip, self.dest_ip,
                            self.src_port, self.dest_port)
+
+
+class Protocol(Enum):
+    """Packet Protocol"""
+    ICMP = 0x01
+    TCP = 0x06
+    UCP = 0x11
+
+
+class Type(Enum):
+    """Packet Type"""
+    IPV4 = 0x0800
+    ARP = 0x0806
 
 
 def get_bytes(bstring):
@@ -304,6 +339,9 @@ if __name__ == '__main__':
         if HEADER_INFO is None:
             break
 
-        SESSION.consume_packet(HEADER_DATA, HEADER_INFO.getts())
+        try:
+            SESSION.consume_packet(HEADER_DATA, HEADER_INFO.getts())
+        except PacketError:
+            print('unrecognized packet')
 
     print(SESSION)
