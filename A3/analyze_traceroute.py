@@ -54,70 +54,6 @@ class Session:
             "TBD")
         output += "The IP addresses of the intermediate destination nodes:\n"
 
-        # # Output aprt B deatils
-        # output += "B) Traces' details:\n\n"
-        # for index, t_id in enumerate(self.trace_order[:-1]):
-        #     output += "Trace {}:\n".format(index + 1)
-        #     output += str(self.traces[t_id])
-        #     output += ("+++++++++++++++++++++++++++++++++\n.\n.\n.\n" +
-        #                "+++++++++++++++++++++++++++++++++\n")
-        # output += "Trace {}:\n".format(len(self.trace_order))
-        # output += str(self.traces[self.trace_order[-1]])
-        # output += ("----------------------------------------------------" +
-        #            "--------------------------------------------------------\n")
-
-        # # Output part C details
-        # output += "C) General\n"
-        # output += "Total number of complete TCP traces: {}\n".format(
-        #     t_count_fin)
-        # output += "Number of reset TCP traces: {}\n".format(t_count_rst)
-        # output += ("Number of TCP traces that were still open when the trace capture " +
-        #            "ended: {}\n".format(t_count_total - t_count_fin))
-        # output += ("----------------------------------------------------" +
-        #            "--------------------------------------------------------\n")
-
-        # # Calculate variables for part D
-        # all_trace_times = [self.traces[t_id].end_time - self.traces[t_id]
-        #                    .start_time for t_id in self.traces
-        #                    if self.traces[t_id].end_time != None]
-        # all_packet_rtts = [
-        #     rtt for t_id in self.traces for rtt in self.traces[t_id].rtts]
-        # all_trace_packet_count = [
-        #     len(self.traces[t_id].packets) for t_id in self.traces]
-        # all_packet_window_size = [
-        #     packet.window for t_id in self.traces for packet in self.traces[t_id].packets]
-
-        # # Output part D details
-        # output += "D) Complete TCP traces:\n\n"
-        # # Traces durations
-        # output += "Minimum time duration: {}\n".format(min(all_trace_times))
-        # output += "Mean time duration: {}\n".format(
-        #     float(sum(all_trace_times) / len(all_trace_times)))
-        # output += "Maximum time duration: {}\n\n".format(max(all_trace_times))
-
-        # # RTT stats
-        # output += "Minimum RTT value: {}\n".format(min(all_packet_rtts))
-        # output += "Mean RTT value: {}\n".format(
-        #     float(sum(all_packet_rtts) / len(all_packet_rtts)))
-        # output += "Maximum RTT value: {}\n\n".format(max(all_packet_rtts))
-
-        # # Packet counts
-        # output += "Minimum number of packets including both send/received: {}\n".format(
-        #     min(all_trace_packet_count))
-        # output += "Mean number of packets including both send/received: {}\n".format(
-        #     float(sum(all_trace_packet_count) / len(all_trace_packet_count)))
-        # output += "Maximum number of packets including both send/received: {}\n\n".format(
-        #     max(all_trace_packet_count))
-
-        # # Window size stats
-        # output += "Minimum receive window size including both send/received: {}\n".format(
-        #     min(all_packet_window_size))
-        # output += "Mean receive window size including both send/received: {}\n".format(
-        #     float(sum(all_packet_window_size) / len(all_packet_window_size)))
-        # output += "Maximum receive window size including both send/received: {}\n".format(
-        #     max(all_packet_window_size))
-        # output += ("----------------------------------------------------" +
-        #            "--------------------------------------------------------\n")
         return output
 
     def consume_packet(self, header_bstr, packet_time):
@@ -129,6 +65,7 @@ class Session:
         packet_time -- time tuple (sec, ms) since epoch of header
         """
         # Init packet
+        print(header_bstr)
         new_packet = Packet(header_bstr, packet_time)
 
         # Set start time if very first packet
@@ -158,15 +95,7 @@ class Trace:
         self.sesh_start = sesh_start
         self.start_time = None
         self.end_time = None
-        self.pkts_1 = 0
-        self.pkts_2 = 0
-        self.flags = {
-            "syn": 0,
-            "fin": 0,
-            "rst": 0,
-        }
         self.packets = []
-        self.seq_wo_ack = {}
         self.rtts = []
 
         self.add_packet(packet)
@@ -189,27 +118,24 @@ class Trace:
             ".".join(str(e) for e in dest_ip))
         output += "Source Port: {}\n".format(src_port)
         output += "Destination Port: {}\n".format(dest_port)
-        output += "Status: {}{}\n".format("S{}F{}".format(
-            self.flags["syn"], self.flags["fin"]), " + R" if self.flags["rst"] != 0 else "")
 
         # If trace is parked as finished output trace details
-        if self.flags["fin"] > 0:
-            output += "Start Time: {}\n".format(self.start_time)
-            output += "End Time: {}\n".format(self.end_time)
-            output += "Duration: {}\n".format(self.end_time - self.start_time)
-            # pylint: disable=E1101
-            # ^ (Instance of 'str' has no 'src_ip' member) - Packet(s) do have src_ip members
-            output += "Number of packets sent from source to destination: {}\n".format(
-                sum(1 for packet in self.packets if packet.src_ip == src_ip))
-            output += "Number of packets sent from destination to source: {}\n".format(
-                sum(1 for packet in self.packets if packet.src_ip == dest_ip))
-            output += "Total number of packets: {}\n".format(len(self.packets))
-            output += "Number of data bytes sent from source to destination: {}\n".format(
-                src_data)
-            output += "Number of data bytes sent from destination to source: {}\n".format(
-                dest_data)
-            output += "Total number of data bytes: {}\n".format(
-                src_data + dest_data)
+        output += "Start Time: {}\n".format(self.start_time)
+        output += "End Time: {}\n".format(self.end_time)
+        output += "Duration: {}\n".format(self.end_time - self.start_time)
+        # pylint: disable=E1101
+        # ^ (Instance of 'str' has no 'src_ip' member) - Packet(s) do have src_ip members
+        output += "Number of packets sent from source to destination: {}\n".format(
+            sum(1 for packet in self.packets if packet.src_ip == src_ip))
+        output += "Number of packets sent from destination to source: {}\n".format(
+            sum(1 for packet in self.packets if packet.src_ip == dest_ip))
+        output += "Total number of packets: {}\n".format(len(self.packets))
+        output += "Number of data bytes sent from source to destination: {}\n".format(
+            src_data)
+        output += "Number of data bytes sent from destination to source: {}\n".format(
+            dest_data)
+        output += "Total number of data bytes: {}\n".format(
+            src_data + dest_data)
         output += "END\n"
 
         return output
@@ -223,38 +149,14 @@ class Trace:
     def add_packet(self, packet):
         """Add packet to trace"""
         # Track direction of packet
-        if packet.src_ip == self.ips[0]:
-            self.pkts_1 += 1
-        elif packet.src_ip == self.ips[1]:
-            self.pkts_2 += 1
-        else:
+        if packet.src_ip not in self.ips:
             print("Wrong Trace:")
             print("Attempted ip: {}".format(packet.src_ip))
             print("On trace between {} and {}".format(
                 self.ips[0], self.ips[1]))
             return
 
-        # Track details dependibng on set flags
-        if packet.flags["fin"] == 1:
-            self.flags["fin"] += 1
-            self.end_time = packet.time - self.sesh_start
-        if packet.flags["syn"] == 1:
-            self.flags["syn"] += 1
-            if self.start_time is None:
-                self.start_time = packet.time - self.sesh_start
-        if packet.flags["rst"] == 1:
-            self.flags["rst"] += 1
-
         self.packets.append(packet)
-
-        # Track acknowledged packets
-        self.seq_wo_ack.update(
-            {str(packet.seqn + packet.data_len): packet.time})
-        if packet.flags["ack"] == 1:
-            if str(packet.ackn) in self.seq_wo_ack:
-                self.rtts.append(
-                    packet.time - self.seq_wo_ack[str(packet.ackn)])
-                del self.seq_wo_ack[str(packet.ackn)]
 
 
 class Packet:
@@ -262,29 +164,41 @@ class Packet:
 
     def __init__(self, header_bstr, time):
         header = get_bytes(header_bstr)
-        eth_header = header[0:14]
-        ip_header = header[14:34]
-        tcp_header = header[34:]
-        tcp_flags = tcp_header[12:14]
+        # eth_header = header[0x00:0x0e]
+        ip_header = header[0x0e:0x22]
+        self.protocol = Protocol(ip_header[9])
 
-        self.proto = eth_header[12] * 256 + eth_header[13]
-        self.src_ip = ip_header[12:16]
-        self.dest_ip = ip_header[16:20]
-        self.src_port = tcp_header[0] * 256 + tcp_header[1]
-        self.dest_port = tcp_header[2] * 256 + tcp_header[3]
-        self.seqn = tcp_header[4] * 16777216 + tcp_header[5] * \
-            65536 + tcp_header[6] * 256 + tcp_header[7]
-        self.ackn = tcp_header[8] * 16777216 + tcp_header[9] * \
-            65536 + tcp_header[10] * 256 + tcp_header[11]
-        self.flags = {
-            "fin": (tcp_flags[1] & 0x01),
-            "syn": (tcp_flags[1] & 0x02) >> 1,
-            "rst": (tcp_flags[1] & 0x04) >> 2,
-            "ack": (tcp_flags[1] & 0x10) >> 4,
-        }
-        self.data_len = len(tcp_header) - \
-            int(((tcp_header[12] & 0xF0) >> 4)) * 4
-        self.window = tcp_header[14] * 256 + tcp_header[15]
+        # ff packet is UDP
+        if self.protocol == Protocol.UDP:
+            udp_header = header[0x22:0x2a]
+            self.src_port = udp_header[0x00] * 0xff + udp_header[0x01]
+            self.dest_port = udp_header[0x02] * 0xff + udp_header[0x03]
+
+        # if packet is ICMP
+        elif self.protocol == Protocol.ICMP:
+            icmp_header = header[0x22:]
+
+            self.type = Type(icmp_header[0x00])
+
+            req_ip_header = icmp_header[0x2a:0x3e]
+            req_udp_header = icmp_header[0x3e:0x46]
+            self.req_src_ip = req_ip_header[0x0c:0x0f]
+            self.req_dest_ip = req_ip_header[0x0f:0x14]
+
+            self.req_src_port = req_udp_header[0x00] * \
+                0xff + req_udp_header[0x01]
+            self.req_dest_port = req_udp_header[0x02] * \
+                0xff + req_udp_header[0x03]
+
+            self.req_sig = get_sig(self.req_src_ip, self.req_dest_ip,
+                                   self.req_src_port, self.req_dest_port)
+
+        # otherwise unrecognized packet
+        else:
+            raise PacketError
+
+        self.src_ip = ip_header[0x0c:0x0f]
+        self.dest_ip = ip_header[0x0f:0x14]
         self.time = time[0] + time[1] * 0.0000001
         self.sig = get_sig(self.src_ip, self.dest_ip,
                            self.src_port, self.dest_port)
@@ -294,13 +208,15 @@ class Protocol(Enum):
     """Packet Protocol"""
     ICMP = 0x01
     TCP = 0x06
-    UCP = 0x11
+    UDP = 0x11
 
 
 class Type(Enum):
-    """Packet Type"""
-    IPV4 = 0x0800
-    ARP = 0x0806
+    """ICMP Type"""
+    DESTINATION_UNREACHABLE = 3
+    REDIRECT = 5
+    TIME_EXCEEDED = 11
+    PARAMETER_PROBLEM = 12
 
 
 def get_bytes(bstring):
