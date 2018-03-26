@@ -9,12 +9,7 @@ import sys
 import pcapy
 
 
-class Error(Exception):
-    """Base class for exceptions in this module."""
-    pass
-
-
-class PacketError(Error):
+class PacketError(Exception):
     """Exception raised for errors in the input.
 
     Attributes:
@@ -22,8 +17,9 @@ class PacketError(Error):
         message -- explanation of the error
     """
 
-    def __init__(self, packet, message):
-        self.packet = packet
+    def __init__(self, message):
+        # Call the base class constructor with the parameters it needs
+        super().__init__(message)
         self.message = message
 
 
@@ -65,7 +61,6 @@ class Session:
         packet_time -- time tuple (sec, ms) since epoch of header
         """
         # Init packet
-        print(header_bstr)
         new_packet = Packet(header_bstr, packet_time)
 
         # Set start time if very first packet
@@ -73,15 +68,26 @@ class Session:
             self.ref_time = new_packet.time
 
         # If trace exists for packet
-        if new_packet.sig in self.traces:
-            self.traces[new_packet.sig].add_packet(new_packet)
-        # If new trace must created
-        else:
-            self.traces.update({
-                new_packet.sig: Trace(
-                    new_packet, self.ref_time)
-            })
-            self.trace_order.append(new_packet.sig)
+        if new_packet.protocol == Protocol.UDP:
+            if new_packet.sig in self.traces:
+                print('Error: duplicate UDP packet probe')
+                print(self.traces)
+                self.traces[new_packet.sig].add_probe(new_packet)
+            # If new trace must created
+            else:
+                self.traces.update({
+                    new_packet.sig: Trace(
+                        new_packet, self.ref_time)
+                })
+                self.trace_order.append(new_packet.sig)
+
+        elif new_packet.protocol == Protocol.ICMP:
+            if new_packet.req_sig in self.traces:
+                self.traces[new_packet.req_sig].add_resp(new_packet)
+            else:
+                print("Error: ICMP receieved for nonexistant probe")
+                print(self.traces)
+                print(new_packet.req_sig)
 
 
 class Trace:
@@ -95,20 +101,17 @@ class Trace:
         self.sesh_start = sesh_start
         self.start_time = None
         self.end_time = None
-        self.packets = []
+        self.probe_packet = None
+        self.resp_packet = None
         self.rtts = []
 
-        self.add_packet(packet)
+        self.probe_packet = packet
 
     def __str__(self):
         """Print state of trace"""
         # Calculate and define variables for later use
         src_ip, dest_ip = self.ips
         src_port, dest_port = self.ports
-        src_data = sum(
-            packet.data_len for packet in self.packets if packet.src_ip == src_ip)
-        dest_data = sum(
-            packet.data_len for packet in self.packets if packet.src_ip == dest_ip)
 
         # Detail IP, Port, and Status
         output = ""
@@ -123,19 +126,6 @@ class Trace:
         output += "Start Time: {}\n".format(self.start_time)
         output += "End Time: {}\n".format(self.end_time)
         output += "Duration: {}\n".format(self.end_time - self.start_time)
-        # pylint: disable=E1101
-        # ^ (Instance of 'str' has no 'src_ip' member) - Packet(s) do have src_ip members
-        output += "Number of packets sent from source to destination: {}\n".format(
-            sum(1 for packet in self.packets if packet.src_ip == src_ip))
-        output += "Number of packets sent from destination to source: {}\n".format(
-            sum(1 for packet in self.packets if packet.src_ip == dest_ip))
-        output += "Total number of packets: {}\n".format(len(self.packets))
-        output += "Number of data bytes sent from source to destination: {}\n".format(
-            src_data)
-        output += "Number of data bytes sent from destination to source: {}\n".format(
-            dest_data)
-        output += "Total number of data bytes: {}\n".format(
-            src_data + dest_data)
         output += "END\n"
 
         return output
@@ -146,17 +136,31 @@ class Trace:
             return None
         return self.end_time - self.start_time
 
-    def add_packet(self, packet):
-        """Add packet to trace"""
-        # Track direction of packet
-        if packet.src_ip not in self.ips:
+    def add_probe(self, packet):
+        """Add packet as probe"""
+        # Add packet as probe
+        if packet.protocol != Protocol.UDP:
+            print("Error: probe not of protocol UDP")
+        elif packet.src_ip not in self.ips:
             print("Wrong Trace:")
             print("Attempted ip: {}".format(packet.src_ip))
             print("On trace between {} and {}".format(
                 self.ips[0], self.ips[1]))
             return
+        self.probe_packet = packet
 
-        self.packets.append(packet)
+    def add_resp(self, packet):
+        """Add packet as response"""
+        # Add packet as response
+        if packet.protocol != Protocol.ICMP:
+            print("Error: probe not of protocol ICMP")
+        elif packet.src_ip not in self.ips:
+            print("Wrong Trace:")
+            print("Attempted ip: {}".format(packet.src_ip))
+            print("On trace between {} and {}".format(
+                self.ips[0], self.ips[1]))
+            return
+        self.resp_packet = packet
 
 
 class Packet:
@@ -166,13 +170,27 @@ class Packet:
         header = get_bytes(header_bstr)
         # eth_header = header[0x00:0x0e]
         ip_header = header[0x0e:0x22]
-        self.protocol = Protocol(ip_header[9])
+        self.time = time[0] + time[1] * 0.0000001
 
-        # ff packet is UDP
+        try:
+            self.protocol = Protocol(ip_header[9])
+        except ValueError:
+            raise PacketError('Unexpected packet protocol')
+
+        # if packet is UDP
         if self.protocol == Protocol.UDP:
             udp_header = header[0x22:0x2a]
-            self.src_port = udp_header[0x00] * 0xff + udp_header[0x01]
-            self.dest_port = udp_header[0x02] * 0xff + udp_header[0x03]
+            self.src_port = udp_header[0x00] * 256 + udp_header[0x01]
+            self.dest_port = udp_header[0x02] * 256 + udp_header[0x03]
+
+            if self.dest_port < 33434 or self.dest_port > 33529:
+                print(self.dest_port)
+                raise PacketError('Port out of range, undesirable packet')
+
+            self.src_ip = ip_header[0x0c:0x0f]
+            self.dest_ip = ip_header[0x0f:0x14]
+            self.sig = get_sig(self.src_ip, self.dest_ip,
+                               self.src_port, self.dest_port)
 
         # if packet is ICMP
         elif self.protocol == Protocol.ICMP:
@@ -180,28 +198,22 @@ class Packet:
 
             self.type = Type(icmp_header[0x00])
 
-            req_ip_header = icmp_header[0x2a:0x3e]
-            req_udp_header = icmp_header[0x3e:0x46]
+            req_ip_header = icmp_header[0x08:0x1c]
+            req_udp_header = icmp_header[0x1c:0x25]
             self.req_src_ip = req_ip_header[0x0c:0x0f]
             self.req_dest_ip = req_ip_header[0x0f:0x14]
 
             self.req_src_port = req_udp_header[0x00] * \
-                0xff + req_udp_header[0x01]
+                256 + req_udp_header[0x01]
             self.req_dest_port = req_udp_header[0x02] * \
-                0xff + req_udp_header[0x03]
+                256 + req_udp_header[0x03]
 
             self.req_sig = get_sig(self.req_src_ip, self.req_dest_ip,
                                    self.req_src_port, self.req_dest_port)
 
         # otherwise unrecognized packet
         else:
-            raise PacketError
-
-        self.src_ip = ip_header[0x0c:0x0f]
-        self.dest_ip = ip_header[0x0f:0x14]
-        self.time = time[0] + time[1] * 0.0000001
-        self.sig = get_sig(self.src_ip, self.dest_ip,
-                           self.src_port, self.dest_port)
+            raise PacketError('Unanticipated packet protocol')
 
 
 class Protocol(Enum):
@@ -257,7 +269,7 @@ if __name__ == '__main__':
 
         try:
             SESSION.consume_packet(HEADER_DATA, HEADER_INFO.getts())
-        except PacketError:
-            print('unrecognized packet')
+        except PacketError as error:
+            print(error.message)
 
     print(SESSION)
