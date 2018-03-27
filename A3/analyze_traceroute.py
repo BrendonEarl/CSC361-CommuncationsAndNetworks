@@ -43,9 +43,15 @@ class Session:
                 complete_traces.append(self.traces[trace_id])
 
         complete_trace_ips = []
+        complete_trace_rtts = {}
         for trace in complete_traces:
             if trace.ips not in complete_trace_ips:
                 complete_trace_ips.append(trace.ips)
+                complete_trace_rtts[get_ips_sig(trace.ips)] = [
+                    trace.end_time - trace.start_time]
+            else:
+                complete_trace_rtts[get_ips_sig(trace.ips)].append(
+                    trace.end_time - trace.start_time)
 
         # Output
         output = ""
@@ -62,6 +68,9 @@ class Session:
             else:
                 output += ",\n"
 
+        for ips in complete_trace_ips:
+            output += "RTTs between {} and {}\n".format(ips[0], ips[1])
+            output += "{}\n\n".format(complete_trace_rtts[get_ips_sig(ips)])
         return output
 
     def consume_packet(self, header_bstr, packet_time):
@@ -113,8 +122,6 @@ class Trace:
         self.end_time = None
         self.probe_packet = None
         self.resp_packet = None
-        self.rtts = []
-
         self.add_probe(packet)
 
     def __str__(self):
@@ -156,6 +163,7 @@ class Trace:
             print("On trace between {} and {}".format(
                 self.ips[0], self.ips[1]))
             return
+        self.start_time = packet.time
         self.probe_packet = packet
 
     def add_resp(self, packet):
@@ -170,6 +178,7 @@ class Trace:
                 self.ips[0], self.ips[1]))
             return
         self.ips = (packet.req_src_ip, packet.src_ip)
+        self.end_time = packet.time
         self.resp_packet = packet
 
 
@@ -247,6 +256,17 @@ def get_bytes(bstring):
     for byte in bstring:
         output.append(byte)
     return output
+
+
+def get_ips_sig(ips):
+    """Find unique sig for ip/port combination"""
+    ip1_str = '.'.join(str(seg) for seg in ips[0])
+    ip2_str = '.'.join(str(seg) for seg in ips[1])
+    if ip1_str < ip2_str:
+        return "{}->{}".format(ip1_str, ip2_str)
+    elif ip1_str > ip2_str:
+        return "{}->{}".format(ip2_str, ip1_str)
+    return "{}->{}".format(ip1_str, ip2_str)
 
 
 def get_sig(ip1, ip2, port1, port2):
