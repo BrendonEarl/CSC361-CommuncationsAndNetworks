@@ -36,19 +36,10 @@ class Session:
 
     def __str__(self):
         """Print session summary"""
-        # Calculate and define variables for later use
-        t_count_total = len(self.trace_order)
-        t_count_fin = sum(
-            1 for t_id in self.traces if self.traces[t_id].flags["fin"] > 0)
-        t_count_rst = sum(
-            1 for t_id in self.traces if self.traces[t_id].flags["rst"] > 0)
 
         # Output
         output = ""
-        output += "The IP address of the source node: {}\n".format("TBD")
-        output += "The IP address of ultimate destination node: {}\n".format(
-            "TBD")
-        output += "The IP addresses of the intermediate destination nodes:\n"
+        output += "traces: {}\n".format(len(self.trace_order))
 
         return output
 
@@ -105,7 +96,7 @@ class Trace:
         self.resp_packet = None
         self.rtts = []
 
-        self.probe_packet = packet
+        self.add_probe(packet)
 
     def __str__(self):
         """Print state of trace"""
@@ -154,9 +145,9 @@ class Trace:
         # Add packet as response
         if packet.protocol != Protocol.ICMP:
             print("Error: probe not of protocol ICMP")
-        elif packet.src_ip not in self.ips:
+        elif packet.req_src_ip not in self.ips:
             print("Wrong Trace:")
-            print("Attempted ip: {}".format(packet.src_ip))
+            print("Attempted ip: {}".format(packet.req_src_ip))
             print("On trace between {} and {}".format(
                 self.ips[0], self.ips[1]))
             return
@@ -184,7 +175,6 @@ class Packet:
             self.dest_port = udp_header[0x02] * 256 + udp_header[0x03]
 
             if self.dest_port < 33434 or self.dest_port > 33529:
-                print(self.dest_port)
                 raise PacketError('Port out of range, undesirable packet')
 
             self.src_ip = ip_header[0x0c:0x0f]
