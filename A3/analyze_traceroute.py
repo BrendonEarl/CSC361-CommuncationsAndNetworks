@@ -37,9 +37,30 @@ class Session:
     def __str__(self):
         """Print session summary"""
 
+        complete_traces = []
+        for trace_id in self.trace_order:
+            if self.traces[trace_id].resp_packet.type == Type.TIME_EXCEEDED:
+                complete_traces.append(self.traces[trace_id])
+
+        complete_trace_ips = []
+        for trace in complete_traces:
+            if trace.ips not in complete_trace_ips:
+                complete_trace_ips.append(trace.ips)
+
         # Output
         output = ""
-        output += "traces: {}\n".format(len(self.trace_order))
+        output += "The IP address of the source node: {}\n".format(
+            ".".join(map(str, complete_trace_ips[0][0])))
+        output += "The IP address of the ultimate destination: {}\n".format(
+            ".".join(map(str, complete_trace_ips[-1][1])))
+        output += "The IP addresses of the intermediate destination nodes:\n"
+        for index, ips in enumerate(complete_trace_ips):
+            output += '\trouter {}: {}'.format(index + 1,
+                                               ".".join(map(str, ips[1])))
+            if index == len(complete_trace_ips) - 1:
+                output += ".\n\n"
+            else:
+                output += ",\n"
 
         return output
 
@@ -62,7 +83,6 @@ class Session:
         if new_packet.protocol == Protocol.UDP:
             if new_packet.sig in self.traces:
                 print('Error: duplicate UDP packet probe')
-                print(self.traces)
                 self.traces[new_packet.sig].add_probe(new_packet)
             # If new trace must created
             else:
@@ -73,11 +93,10 @@ class Session:
                 self.trace_order.append(new_packet.sig)
 
         elif new_packet.protocol == Protocol.ICMP:
-            if new_packet.req_sig in self.traces:
+            if new_packet.req_sig in [self.traces[trace_id].sig for trace_id in self.traces]:
                 self.traces[new_packet.req_sig].add_resp(new_packet)
             else:
                 print("Error: ICMP receieved for nonexistant probe")
-                print(self.traces)
                 print(new_packet.req_sig)
 
 
@@ -116,7 +135,6 @@ class Trace:
         # If trace is parked as finished output trace details
         output += "Start Time: {}\n".format(self.start_time)
         output += "End Time: {}\n".format(self.end_time)
-        output += "Duration: {}\n".format(self.end_time - self.start_time)
         output += "END\n"
 
         return output
@@ -151,6 +169,7 @@ class Trace:
             print("On trace between {} and {}".format(
                 self.ips[0], self.ips[1]))
             return
+        self.ips = (packet.req_src_ip, packet.src_ip)
         self.resp_packet = packet
 
 
@@ -168,17 +187,19 @@ class Packet:
         except ValueError:
             raise PacketError('Unexpected packet protocol')
 
+        self.src_ip = ip_header[0x0c:0x10]
+        self.dest_ip = ip_header[0x10:0x14]
+
         # if packet is UDP
         if self.protocol == Protocol.UDP:
             udp_header = header[0x22:0x2a]
+
             self.src_port = udp_header[0x00] * 256 + udp_header[0x01]
             self.dest_port = udp_header[0x02] * 256 + udp_header[0x03]
 
             if self.dest_port < 33434 or self.dest_port > 33529:
                 raise PacketError('Port out of range, undesirable packet')
 
-            self.src_ip = ip_header[0x0c:0x0f]
-            self.dest_ip = ip_header[0x0f:0x14]
             self.sig = get_sig(self.src_ip, self.dest_ip,
                                self.src_port, self.dest_port)
 
@@ -187,11 +208,10 @@ class Packet:
             icmp_header = header[0x22:]
 
             self.type = Type(icmp_header[0x00])
-
             req_ip_header = icmp_header[0x08:0x1c]
             req_udp_header = icmp_header[0x1c:0x25]
-            self.req_src_ip = req_ip_header[0x0c:0x0f]
-            self.req_dest_ip = req_ip_header[0x0f:0x14]
+            self.req_src_ip = req_ip_header[0x0c:0x10]
+            self.req_dest_ip = req_ip_header[0x10:0x14]
 
             self.req_src_port = req_udp_header[0x00] * \
                 256 + req_udp_header[0x01]
