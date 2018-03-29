@@ -6,6 +6,7 @@ with a series of sessions within, each tracking the packets apart of each
 """
 from enum import Enum
 import sys
+import statistics
 import pcapy
 
 
@@ -69,8 +70,10 @@ class Session:
                 output += ",\n"
 
         for ips in complete_trace_ips:
-            output += "RTTs between {} and {}\n".format(ips[0], ips[1])
-            output += "{}\n\n".format(complete_trace_rtts[get_ips_sig(ips)])
+            rtts = complete_trace_rtts[get_ips_sig(ips)]
+            output += "The avg RTT between {} and {}: ".format(".".join(map(str, ips[0])), ".".join(map(str, ips[1])))
+            output += "{0:.3f}ms, ".format(statistics.mean(rtts))
+            output += "the s.d. is: {0:.1f}ms\n".format(0 if len(rtts) < 2 else statistics.stdev(rtts))
         return output
 
     def consume_packet(self, header_bstr, packet_time):
@@ -118,15 +121,18 @@ class Trace:
         self.ips = (packet.src_ip, packet.dest_ip)
         self.ports = (packet.src_port, packet.dest_port)
         self.sesh_start = sesh_start
+        # managed by add_probe function
         self.start_time = None
-        self.end_time = None
         self.probe_packet = None
+        # managed by add_resp function
         self.resp_packet = None
+        self.end_time = None
+        # call add_probe
         self.add_probe(packet)
 
     def __str__(self):
         """Print state of trace"""
-        # Calculate and define variables for later use
+        # calculate and define variables for later use
         src_ip, dest_ip = self.ips
         src_port, dest_port = self.ports
 
@@ -154,7 +160,7 @@ class Trace:
 
     def add_probe(self, packet):
         """Add packet as probe"""
-        # Add packet as probe
+        # add packet as probe
         if packet.protocol != Protocol.UDP:
             print("Error: probe not of protocol UDP")
         elif packet.src_ip not in self.ips:
@@ -168,7 +174,7 @@ class Trace:
 
     def add_resp(self, packet):
         """Add packet as response"""
-        # Add packet as response
+        # add packet as response
         if packet.protocol != Protocol.ICMP:
             print("Error: probe not of protocol ICMP")
         elif packet.req_src_ip not in self.ips:
@@ -187,9 +193,8 @@ class Packet:
 
     def __init__(self, header_bstr, time):
         header = get_bytes(header_bstr)
-        # eth_header = header[0x00:0x0e]
         ip_header = header[0x0e:0x22]
-        self.time = time[0] + time[1] * 0.0000001
+        self.time = time[0] * 1000 + time[1] * 0.001
 
         try:
             self.protocol = Protocol(ip_header[9])
@@ -217,11 +222,14 @@ class Packet:
             icmp_header = header[0x22:]
 
             self.type = Type(icmp_header[0x00])
+
+            # break out req headers from icmp response
             req_ip_header = icmp_header[0x08:0x1c]
             req_udp_header = icmp_header[0x1c:0x25]
+
+            # get req ips & ports
             self.req_src_ip = req_ip_header[0x0c:0x10]
             self.req_dest_ip = req_ip_header[0x10:0x14]
-
             self.req_src_port = req_udp_header[0x00] * \
                 256 + req_udp_header[0x01]
             self.req_dest_port = req_udp_header[0x02] * \
@@ -262,6 +270,8 @@ def get_ips_sig(ips):
     """Find unique sig for ip/port combination"""
     ip1_str = '.'.join(str(seg) for seg in ips[0])
     ip2_str = '.'.join(str(seg) for seg in ips[1])
+
+    # Arrange sig according to lex order
     if ip1_str < ip2_str:
         return "{}->{}".format(ip1_str, ip2_str)
     elif ip1_str > ip2_str:
@@ -273,6 +283,8 @@ def get_sig(ip1, ip2, port1, port2):
     """Find unique sig for ip/port combination"""
     ip1_str = '.'.join(str(seg) for seg in ip1)
     ip2_str = '.'.join(str(seg) for seg in ip2)
+
+    # Arrange sig according to lex order
     if ip1_str < ip2_str:
         return "{}:{}->{}:{}".format(ip1_str, port1, ip2_str, port2)
     elif ip1_str > ip2_str:
