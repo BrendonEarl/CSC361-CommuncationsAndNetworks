@@ -19,7 +19,8 @@ class Session:
 
         complete_traces = []
         for trace_id in self.trace_order:
-            if self.traces[trace_id].resp_packet and self.traces[trace_id].resp_packet.type == Type.TIME_EXCEEDED:
+            if (self.traces[trace_id].resp_packet and
+                    self.traces[trace_id].resp_packet.type == Type.TIME_EXCEEDED):
                 complete_traces.append(self.traces[trace_id])
 
         complete_trace_ips = []
@@ -27,11 +28,11 @@ class Session:
         for trace in complete_traces:
             if trace.ips not in complete_trace_ips:
                 complete_trace_ips.append(trace.ips)
-                complete_trace_rtts[get_ips_sig(trace.ips)] = [
-                    trace.end_time - trace.start_time]
+                complete_trace_rtts[trace.get_ips_sig()] = [
+                    trace.get_duration()]
             else:
-                complete_trace_rtts[get_ips_sig(trace.ips)].append(
-                    trace.end_time - trace.start_time)
+                complete_trace_rtts[trace.get_ips_sig()].append(
+                    trace.get_duration())
 
         # Output
         # summarize routers
@@ -51,14 +52,14 @@ class Session:
 
         # summarize protocols seen
         unique_protos = []
-        for trace_id in self.traces:
-            if self.traces[trace_id].probe_packet.protocol not in unique_protos:
+        for trace in self.traces.values():
+            if trace.probe_packet.protocol not in unique_protos:
                 unique_protos.append(
-                    self.traces[trace_id].probe_packet.protocol)
-            if self.traces[trace_id].resp_packet is not None:
-                if self.traces[trace_id].resp_packet.protocol not in unique_protos:
+                    trace.probe_packet.protocol)
+            if trace.resp_packet is not None:
+                if trace.resp_packet.protocol not in unique_protos:
                     unique_protos.append(
-                        self.traces[trace_id].resp_packet.protocol)
+                        trace.resp_packet.protocol)
 
         output += "The values in the protocol field of IP headers:\n"
         for proto in unique_protos:
@@ -106,7 +107,7 @@ class Session:
                 self.trace_order.append(new_packet.get_sig())
 
         elif new_packet.protocol == Protocol.ICMP and new_packet.type == Type.TIME_EXCEEDED:
-            if new_packet.req_sig in [self.traces[trace_id].sig for trace_id in self.traces]:
+            if new_packet.req_sig in [trace.get_sig() for trace in self.traces.values()]:
                 self.traces[new_packet.req_sig].add_resp(new_packet)
             else:
                 print("Error: ICMP receieved for nonexistant probe")

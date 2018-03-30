@@ -45,6 +45,9 @@ class Trace:
     def get_sig(self):
         return self.sig
 
+    def get_ips_sig(self):
+        return get_ips_sig(self.ips)
+
     def get_duration(self):
         """Return duration of trace"""
         if self.end_time is None:
