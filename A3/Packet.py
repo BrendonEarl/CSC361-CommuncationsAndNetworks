@@ -1,5 +1,6 @@
 from utils import PacketError, Platform, Protocol, Type, get_sig, get_ips_sig, get_bytes
 
+
 class Packet:
     """Parsed packet"""
 
@@ -38,7 +39,7 @@ class Packet:
             # if type == Type.ECHO:
             #     # self.sig = get_sig(self.src_ip, self.dest_ip, self.seq)
             # if type == Type.TIME_EXCEEDED:
-                # break out req headers from icmp response
+            # break out req headers from icmp response
             req_ip_header = icmp_header[0x08:0x1c]
             req_udp_header = icmp_header[0x1c:0x25]
 
@@ -51,7 +52,7 @@ class Packet:
                 256 + req_udp_header[0x03]
 
             self.req_sig = get_sig(self.req_src_ip, self.req_dest_ip,
-                                    self.req_src_port, self.req_dest_port)
+                                   self.req_src_port, self.req_dest_port)
             # else:
             #     print("ICMP type unacounted for: {}".format(type))
 
@@ -59,3 +60,8 @@ class Packet:
         else:
             raise PacketError('Unanticipated packet protocol')
 
+    def get_sig(self):
+        return self.sig
+
+    def get_req_sig(self):
+        return self.req_sig

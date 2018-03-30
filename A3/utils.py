@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class PacketError(Exception):
     """Exception raised for errors in the input.
 
@@ -21,6 +22,7 @@ class Platform(Enum):
     """OS Platform"""
     WIN = 0
     LINUX = 1
+
 
 class Protocol(Enum):
     """Packet Protocol"""
@@ -57,6 +59,7 @@ def get_ips_sig(ips):
     elif ip1_str > ip2_str:
         return "{}->{}".format(ip2_str, ip1_str)
     return "{}->{}".format(ip1_str, ip2_str)
+
 
 def get_sig(ip1, ip2, port1, port2):
     """Find unique sig for ip/port combination"""

@@ -1,22 +1,24 @@
 from utils import Platform, Protocol, Type, get_sig, get_ips_sig
 
+
 class Trace:
     """Trace between two specific services [ip:port]s"""
 
     def __init__(self, packet, sesh_start):
-        self.sig = get_sig(packet.src_ip, packet.dest_ip,
-                           packet.src_port, packet.dest_port)
         self.ips = (packet.src_ip, packet.dest_ip)
         self.ports = (packet.src_port, packet.dest_port)
         self.sesh_start = sesh_start
         # managed by add_probe function
+        self.sig = None
+        self.platform = None
         self.start_time = None
         self.probe_packet = None
         # managed by add_resp function
         self.resp_packet = None
         self.end_time = None
+
         # call add_probe
-        self.platform = self.add_probe(packet)
+        self.add_probe(packet)
 
     def __str__(self):
         """Print state of trace"""
@@ -40,6 +42,9 @@ class Trace:
 
         return output
 
+    def get_sig(self):
+        return self.sig
+
     def get_duration(self):
         """Return duration of trace"""
         if self.end_time is None:
@@ -59,6 +64,8 @@ class Trace:
             return
         self.start_time = packet.time
         self.probe_packet = packet
+        self.sig = get_sig(packet.src_ip, packet.dest_ip,
+                           packet.src_port, packet.dest_port)
 
     def add_resp(self, packet):
         """Add packet as response"""
@@ -74,4 +81,3 @@ class Trace:
         self.ips = (packet.req_src_ip, packet.src_ip)
         self.end_time = packet.time
         self.resp_packet = packet
-

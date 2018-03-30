@@ -4,6 +4,7 @@ from utils import Platform, Protocol, Type, get_sig, get_ips_sig
 from Trace import Trace
 from Packet import Packet
 
+
 class Session:
     """Trace session"""
 
@@ -18,7 +19,7 @@ class Session:
 
         complete_traces = []
         for trace_id in self.trace_order:
-            if self.traces[trace_id].resp_packet.type == Type.TIME_EXCEEDED:
+            if self.traces[trace_id].resp_packet and self.traces[trace_id].resp_packet.type == Type.TIME_EXCEEDED:
                 complete_traces.append(self.traces[trace_id])
 
         complete_trace_ips = []
@@ -52,11 +53,13 @@ class Session:
         unique_protos = []
         for trace_id in self.traces:
             if self.traces[trace_id].probe_packet.protocol not in unique_protos:
-                unique_protos.append(self.traces[trace_id].probe_packet.protocol)
+                unique_protos.append(
+                    self.traces[trace_id].probe_packet.protocol)
             if self.traces[trace_id].resp_packet is not None:
                 if self.traces[trace_id].resp_packet.protocol not in unique_protos:
-                    unique_protos.append(self.traces[trace_id].resp_packet.protocol)
-        
+                    unique_protos.append(
+                        self.traces[trace_id].resp_packet.protocol)
+
         output += "The values in the protocol field of IP headers:\n"
         for proto in unique_protos:
             output += "\t {}: {}\n".format(proto.value, proto.name)
@@ -65,9 +68,11 @@ class Session:
         # summarize rtts
         for ips in complete_trace_ips:
             rtts = complete_trace_rtts[get_ips_sig(ips)]
-            output += "The avg RTT between {} and {}: ".format(".".join(map(str, ips[0])), ".".join(map(str, ips[1])))
+            output += "The avg RTT between {} and {}: ".format(
+                ".".join(map(str, ips[0])), ".".join(map(str, ips[1])))
             output += "{0:.3f}ms, ".format(statistics.mean(rtts))
-            output += "the s.d. is: {0:.1f}ms\n".format(0 if len(rtts) < 2 else statistics.stdev(rtts))
+            output += "the s.d. is: {0:.1f}ms\n".format(
+                0 if len(rtts) < 2 else statistics.stdev(rtts))
         return output
 
     def consume_packet(self, header_bstr, packet_time):
@@ -86,22 +91,23 @@ class Session:
             self.ref_time = new_packet.time
 
         # If trace exists for packet
-        if new_packet.protocol == Protocol.UDP:
-            if new_packet.sig in self.traces:
+        if (new_packet.protocol == Protocol.UDP or (
+            new_packet.protocol == Protocol.ICMP and new_packet.type == Type.ECHO
+        )):
+            if new_packet.get_sig() in self.traces:
                 print('Error: duplicate UDP packet probe')
-                self.traces[new_packet.sig].add_probe(new_packet)
+                self.traces[new_packet.get_sig()].add_probe(new_packet)
             # If new trace must created
             else:
                 self.traces.update({
-                    new_packet.sig: Trace(
+                    new_packet.get_sig(): Trace(
                         new_packet, self.ref_time)
                 })
-                self.trace_order.append(new_packet.sig)
+                self.trace_order.append(new_packet.get_sig())
 
-        elif new_packet.protocol == Protocol.ICMP:
+        elif new_packet.protocol == Protocol.ICMP and new_packet.type == Type.TIME_EXCEEDED:
             if new_packet.req_sig in [self.traces[trace_id].sig for trace_id in self.traces]:
                 self.traces[new_packet.req_sig].add_resp(new_packet)
             else:
                 print("Error: ICMP receieved for nonexistant probe")
                 print(new_packet.req_sig)
-
