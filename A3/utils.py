@@ -33,6 +33,7 @@ class Protocol(Enum):
 
 class Type(Enum):
     """ICMP Type"""
+    INVALID = 0
     DESTINATION_UNREACHABLE = 3
     REDIRECT = 5
     ECHO = 8
@@ -61,7 +62,7 @@ def get_ips_sig(ips):
     return "{}->{}".format(ip1_str, ip2_str)
 
 
-def get_sig(ip1, ip2, port1, port2):
+def get_udp_sig(ip1, ip2, port1, port2):
     """Find unique sig for ip/port combination"""
     ip1_str = '.'.join(str(seg) for seg in ip1)
     ip2_str = '.'.join(str(seg) for seg in ip2)
@@ -74,3 +75,16 @@ def get_sig(ip1, ip2, port1, port2):
     elif port1 < port2:
         return "{}:{}->{}:{}".format(ip1_str, port1, ip2_str, port2)
     return "{}:{}->{}:{}".format(ip2_str, port2, ip1_str, port1)
+
+
+def get_icmp_sig(ip1, ip2, seq):
+    """Find unique sig for ip/port combination"""
+    ip1_str = '.'.join(str(seg) for seg in ip1)
+    ip2_str = '.'.join(str(seg) for seg in ip2)
+
+    # Arrange sig according to lex order
+    if ip1_str < ip2_str:
+        return "{}->{}--{}".format(ip1_str, ip2_str, seq)
+    elif ip1_str > ip2_str:
+        return "{}->{}--{}".format(ip2_str, ip1_str, seq)
+    return "{}->{}--{}".format(ip2_str, ip1_str, seq)

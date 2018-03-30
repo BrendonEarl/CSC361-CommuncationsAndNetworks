@@ -1,12 +1,10 @@
-from utils import Platform, Protocol, Type, get_sig, get_ips_sig
+from utils import Platform, Protocol, Type, get_udp_sig, get_icmp_sig, get_ips_sig
 
 
 class Trace:
     """Trace between two specific services [ip:port]s"""
 
     def __init__(self, packet, sesh_start):
-        self.ips = (packet.src_ip, packet.dest_ip)
-        self.ports = (packet.src_port, packet.dest_port)
         self.sesh_start = sesh_start
         # managed by add_probe function
         self.sig = None
@@ -17,14 +15,13 @@ class Trace:
         self.resp_packet = None
         self.end_time = None
 
-        # call add_probe
         self.add_probe(packet)
 
     def __str__(self):
         """Print state of trace"""
         # calculate and define variables for later use
-        src_ip, dest_ip = self.ips
-        src_port, dest_port = self.ports
+        src_ip, dest_ip = self.get_ips()
+        src_port, dest_port = self.get_ports()
 
         # Detail IP, Port, and Status
         output = ""
@@ -42,11 +39,33 @@ class Trace:
 
         return output
 
+    def get_ips(self):
+        if self.probe_packet is not None and self.resp_packet is not None:
+            return (self.probe_packet.src_ip, self.resp_packet.src_ip)
+        elif self.probe_packet is not None:
+            return (self.probe_packet.src_ip, None)
+        return (None, None)
+
+    def get_ports(self):
+        if self.platform == Platform.LINUX:
+            if self.probe_packet is not None and self.resp_packet is not None:
+                return (self.probe_packet.src_port, self.resp_packet.src_port)
+            elif self.probe_packet is not None:
+                return (self.probe_packet.src_port, None)
+            return (None, None)
+
+        elif self.platform == Platform.WIN:
+            print("get_ports request made on windows trace, no are set")
+            return (None, None)
+        else:
+            print("get_ports request made on trace without platform set")
+            return (None, None)
+
     def get_sig(self):
         return self.sig
 
     def get_ips_sig(self):
-        return get_ips_sig(self.ips)
+        return get_ips_sig(self.get_ips())
 
     def get_duration(self):
         """Return duration of trace"""
@@ -54,32 +73,34 @@ class Trace:
             return None
         return self.end_time - self.start_time
 
+    def is_complete(self):
+        if self.probe_packet is not None and self.resp_packet is not None:
+            return True
+        return False
+
     def add_probe(self, packet):
         """Add packet as probe"""
-        # add packet as probe
-        if packet.protocol != Protocol.UDP:
-            print("Error: probe not of protocol UDP")
-        elif packet.src_ip not in self.ips:
-            print("Wrong Trace:")
-            print("Attempted ip: {}".format(packet.src_ip))
-            print("On trace between {} and {}".format(
-                self.ips[0], self.ips[1]))
-            return
+        # check probe follows appropriate protocol
+        if packet.protocol != Protocol.UDP and packet.protocol != Protocol.ICMP:
+            print("Error: probe of protocols UDP or ICMP")
         self.start_time = packet.time
         self.probe_packet = packet
-        self.sig = get_sig(packet.src_ip, packet.dest_ip,
-                           packet.src_port, packet.dest_port)
+        if packet.protocol == Protocol.UDP:
+            self.sig = get_udp_sig(packet.src_ip, packet.dest_ip,
+                                   packet.src_port, packet.dest_port)
+        elif packet.protocol == Protocol.ICMP:
+            self.sig = get_icmp_sig(packet.src_ip, packet.dest_ip, packet.seq)
 
     def add_resp(self, packet):
         """Add packet as response"""
         # add packet as response
         if packet.protocol != Protocol.ICMP:
             print("Error: probe not of protocol ICMP")
-        elif packet.req_src_ip not in self.ips:
+        elif packet.req_src_ip not in self.get_ips():
             print("Wrong Trace:")
             print("Attempted ip: {}".format(packet.req_src_ip))
             print("On trace between {} and {}".format(
-                self.ips[0], self.ips[1]))
+                self.get_ips()[0], self.get_ips()[1]))
             return
         self.ips = (packet.req_src_ip, packet.src_ip)
         self.end_time = packet.time

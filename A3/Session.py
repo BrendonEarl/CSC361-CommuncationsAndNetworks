@@ -1,6 +1,6 @@
 import statistics
 
-from utils import Platform, Protocol, Type, get_sig, get_ips_sig
+from utils import Platform, Protocol, Type, get_ips_sig
 from Trace import Trace
 from Packet import Packet
 
@@ -26,8 +26,8 @@ class Session:
         complete_trace_ips = []
         complete_trace_rtts = {}
         for trace in complete_traces:
-            if trace.ips not in complete_trace_ips:
-                complete_trace_ips.append(trace.ips)
+            if trace.get_ips() not in complete_trace_ips:
+                complete_trace_ips.append(trace.get_ips())
                 complete_trace_rtts[trace.get_ips_sig()] = [
                     trace.get_duration()]
             else:
@@ -69,7 +69,7 @@ class Session:
         # summarize rtts
         for ips in complete_trace_ips:
             rtts = complete_trace_rtts[get_ips_sig(ips)]
-            output += "The avg RTT between {} and {}: ".format(
+            output += "The avg RTT between {} and {} is: ".format(
                 ".".join(map(str, ips[0])), ".".join(map(str, ips[1])))
             output += "{0:.3f}ms, ".format(statistics.mean(rtts))
             output += "the s.d. is: {0:.1f}ms\n".format(
@@ -108,7 +108,7 @@ class Session:
 
         elif new_packet.protocol == Protocol.ICMP and new_packet.type == Type.TIME_EXCEEDED:
             if new_packet.req_sig in [trace.get_sig() for trace in self.traces.values()]:
-                self.traces[new_packet.req_sig].add_resp(new_packet)
+                self.traces[new_packet.get_req_sig()].add_resp(new_packet)
             else:
                 print("Error: ICMP receieved for nonexistant probe")
                 print(new_packet.req_sig)
