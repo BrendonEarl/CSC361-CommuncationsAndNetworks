@@ -55,6 +55,7 @@ class Session:
                     trace.end_time - trace.start_time)
 
         # Output
+        # summarize routers
         output = ""
         output += "The IP address of the source node: {}\n".format(
             ".".join(map(str, complete_trace_ips[0][0])))
@@ -69,6 +70,21 @@ class Session:
             else:
                 output += ",\n"
 
+        # summarize protocols seen
+        unique_protos = []
+        for trace_id in self.traces:
+            if self.traces[trace_id].probe_packet.protocol not in unique_protos:
+                unique_protos.append(self.traces[trace_id].probe_packet.protocol)
+            if self.traces[trace_id].resp_packet is not None:
+                if self.traces[trace_id].resp_packet.protocol not in unique_protos:
+                    unique_protos.append(self.traces[trace_id].resp_packet.protocol)
+        
+        output += "The values in the protocol field of IP headers:\n"
+        for proto in unique_protos:
+            output += "\t {}: {}\n".format(proto.value, proto.name)
+        output += "\n"
+
+        # summarize rtts
         for ips in complete_trace_ips:
             rtts = complete_trace_rtts[get_ips_sig(ips)]
             output += "The avg RTT between {} and {}: ".format(".".join(map(str, ips[0])), ".".join(map(str, ips[1])))
