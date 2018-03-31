@@ -1,8 +1,9 @@
 import statistics
 
-from utils import Platform, Protocol, Type, get_ips_sig
+from utils import Platform, Protocol, Type, get_ips_sig, is_frag, get_frag_id, get_bytes
 from Trace import Trace
 from Packet import Packet
+from Fragment import Fragment
 
 
 class Session:
@@ -13,6 +14,7 @@ class Session:
         self.traces = {}
         self.trace_order = []
         self.ref_time = None
+        self.incomplete_packets = {}
 
     def __str__(self):
         """Print session summary"""
@@ -84,31 +86,33 @@ class Session:
         header_bstr -- binary string of the packet header
         packet_time -- time tuple (sec, ms) since epoch of header
         """
-        # Init packet
-        new_packet = Packet(header_bstr, packet_time)
+        # Check if packet isn't complete
+        new_fragment = Fragment(header_bstr, packet_time)
+        if new_fragment.id in self.incomplete_packets:
+            packet = self.incomplete_packets[new_fragment.id]
+            packet.add_frag(new_fragment)
+        else:
+            packet = Packet(new_fragment)
+            self.incomplete_packets[packet.id] = packet
 
         # Set start time if very first packet
         if self.ref_time is None:
-            self.ref_time = new_packet.time
+            self.ref_time = packet.time
 
-        # If trace exists for packet
-        if (new_packet.protocol == Protocol.UDP or (
-            new_packet.protocol == Protocol.ICMP and new_packet.type == Type.ECHO
-        )):
-            if new_packet.get_trace_sig() in self.traces:
-                print('Error: duplicate UDP packet probe')
-                self.traces[new_packet.get_trace_sig()].add_probe(new_packet)
-            # If new trace must created
-            else:
-                self.traces.update({
-                    new_packet.get_trace_sig(): Trace(
-                        new_packet, self.ref_time)
-                })
-                self.trace_order.append(new_packet.get_trace_sig())
+        if packet.is_complete():
+            del self.incomplete_packets[packet.id]
+            if (packet.protocol == Protocol.UDP or (
+                packet.protocol == Protocol.ICMP and packet.type == Type.ECHO
+            )):
+                self.traces[packet.get_trace_sig()] = Trace(
+                    packet, self.ref_time)
+                self.trace_order.append(packet.get_trace_sig())
 
-        elif new_packet.protocol == Protocol.ICMP and new_packet.type == Type.TIME_EXCEEDED:
-            if new_packet.get_trace_sig() in [trace.get_sig() for trace in self.traces.values()]:
-                self.traces[new_packet.get_trace_sig()].add_resp(new_packet)
+            elif packet.protocol == Protocol.ICMP and packet.type == Type.TIME_EXCEEDED:
+                if packet.get_trace_sig() in [trace.get_sig() for trace in self.traces.values()]:
+                    self.traces[packet.get_trace_sig()].add_resp(packet)
+                else:
+                    print("Error: ICMP receieved for nonexistant probe")
+                    print(packet.get_trace_sig())
             else:
-                print("Error: ICMP receieved for nonexistant probe")
-                print(new_packet.get_trace_sig())
+                print("Protocol not savable in traces")

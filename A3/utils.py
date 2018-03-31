@@ -76,3 +76,16 @@ def get_icmp_sig(ip1, seq):
 
     # Arrange sig according to lex order
     return "src-{}--{}".format(ip1_str, seq)
+
+
+def is_frag(header_bstr):
+    """check if bystream is that of a fragment"""
+    if (header_bstr[0x14] & 0xe0) == 0x20:
+        return True
+    else:
+        return False
+
+
+def get_frag_id(header_bstr):
+    """Return id associated with frag"""
+    return header_bstr[0x12] * 256 + header_bstr[0x13]

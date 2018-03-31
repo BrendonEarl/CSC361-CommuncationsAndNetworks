@@ -83,13 +83,15 @@ class Trace:
         # check probe follows appropriate protocol
         if packet.protocol != Protocol.UDP and packet.protocol != Protocol.ICMP:
             print("Error: probe of protocols UDP or ICMP")
-        self.start_time = packet.time
-        self.probe_packet = packet
-        if packet.protocol == Protocol.UDP:
-            self.sig = get_udp_sig(packet.src_ip, packet.dest_ip,
-                                   packet.src_port, packet.dest_port)
-        elif packet.protocol == Protocol.ICMP:
-            self.sig = get_icmp_sig(packet.src_ip, packet.dest_ip, packet.seq)
+        if self.probe_packet is None:
+            self.start_time = packet.time
+            self.probe_packet = packet
+            if packet.protocol == Protocol.UDP:
+                self.sig = get_udp_sig(packet.src_ip, packet.src_port)
+            elif packet.protocol == Protocol.ICMP:
+                self.sig = get_icmp_sig(packet.src_ip, packet.seq)
+        else:
+            self.probe_packet.add_frag(packet)
 
     def add_resp(self, packet):
         """Add packet as response"""

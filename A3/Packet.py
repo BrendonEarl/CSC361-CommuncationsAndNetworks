@@ -4,75 +4,94 @@ from utils import PacketError, Platform, Protocol, Type, get_udp_sig, get_icmp_s
 class Packet:
     """Parsed packet"""
 
-    def __init__(self, header_bstr, time):
-        header = get_bytes(header_bstr)
-        ip_header = header[0x0e:0x22]
-        self.time = time[0] * 1000 + time[1] * 0.001
-        self.id = ip_header[0x04] * 256 + ip_header[0x05]
-        self.flags = ip_header[0x06]
-        self.frags = []
+    def __init__(self, fragment):
+        self.fragments = []
+        self.time = fragment.time
+        self.id = fragment.id
+        self.protocol = None
+        self.src_ip = fragment.src_ip
+        self.dest_ip = fragment.dest_ip
+        self.total_len = None
+        # TODO: remove this
         self.req_seq = None
 
         try:
-            self.protocol = Protocol(ip_header[9])
+            self.protocol = Protocol(fragment.proto)
         except ValueError:
             raise PacketError('Unexpected packet protocol')
 
-        self.src_ip = ip_header[0x0c:0x10]
-        self.dest_ip = ip_header[0x10:0x14]
+        self.add_frag(fragment)
 
-        # if fragments and not final
-        if self.flags != 0x01:
-            self.frag_offset = ip_header[0x06] * 256 + ip_header[0x07]
-            # if packet is UDP
-            if self.protocol == Protocol.UDP:
-                udp_header = header[0x22:0x2a]
+    def add_frag(self, fragment):
+        self.fragments.append(fragment)
+        # if last fragment
+        if fragment.flags == 0x00:
+            self.total_len = fragment.offset + fragment.len - 20
+        if self.is_complete():
+            self.assemble_packet()
 
-                self.src_port = udp_header[0x00] * 256 + udp_header[0x01]
-                self.dest_port = udp_header[0x02] * 256 + udp_header[0x03]
+    def assemble_packet(self):
+        data = []
+        for frag in self.fragments:
+            data.extend(frag.data)
 
-                if self.dest_port < 33434 or self.dest_port > 33529:
-                    raise PacketError('Port out of range, undesirable packet')
+        # if packet is UDP
+        if self.protocol == Protocol.UDP:
+            udp_header = data
 
-            # if packet is ICMP
-            elif self.protocol == Protocol.ICMP:
-                icmp_header = header[0x22:]
-                try:
-                    self.type = Type(icmp_header[0x00])
-                except:
-                    print('oups icmp packet with unexpected type')
+            self.src_port = udp_header[0x00] * 256 + udp_header[0x01]
+            self.dest_port = udp_header[0x02] * 256 + udp_header[0x03]
 
-                if self.type == Type.ECHO:
-                    self.seq = icmp_header[0x06] * 256 + icmp_header[0x07]
-                elif self.type == Type.TIME_EXCEEDED:
-                    req_ip_header = icmp_header[0x08:0x1c]
-                    req_icmp_header = icmp_header[0x1c:]
-                    self.req_id = req_ip_header[0x04] * \
-                        256 + req_ip_header[0x05]
-                    self.req_src_ip = req_ip_header[0x0c:0x10]
-                    self.req_dest_ip = req_ip_header[0x10:0x14]
-                    if req_icmp_header[0x00] == Type.ECHO.value:
-                        # break out req headers from icmp response
-                        self.req_seq = req_icmp_header[0x06] * \
-                            256 + req_icmp_header[0x07]
-                    else:
-                        # break out req headers from icmp response
-                        req_udp_header = icmp_header[0x1c:0x25]
+            if self.dest_port < 33434 or self.dest_port > 33529:
+                raise PacketError('Port out of range, undesirable packet')
 
-                        # get req ips & ports
-                        self.req_src_port = req_udp_header[0x00] * \
-                            256 + req_udp_header[0x01]
-                        self.req_dest_port = req_udp_header[0x02] * \
-                            256 + req_udp_header[0x03]
+        # if packet is ICMP
+        elif self.protocol == Protocol.ICMP:
+            icmp_header = data
+            try:
+                self.type = Type(icmp_header[0x00])
+            except:
+                print('oups icmp packet with unexpected type')
+                raise PacketError('ICMP packet with unexpected type')
+
+            if self.type == Type.ECHO:
+                self.seq = icmp_header[0x06] * 256 + icmp_header[0x07]
+            elif self.type == Type.TIME_EXCEEDED:
+                req_ip_header = icmp_header[0x08:0x1c]
+                req_icmp_header = icmp_header[0x1c:]
+                self.req_id = req_ip_header[0x04] * \
+                    256 + req_ip_header[0x05]
+                self.req_src_ip = req_ip_header[0x0c:0x10]
+                self.req_dest_ip = req_ip_header[0x10:0x14]
+                if req_icmp_header[0x00] == Type.ECHO.value:
+                    # break out req headers from icmp response
+                    self.req_seq = req_icmp_header[0x06] * \
+                        256 + req_icmp_header[0x07]
                 else:
-                    print("ICMP type unacounted for: {}".format(self.type))
+                    # break out req headers from icmp response
+                    req_udp_header = icmp_header[0x1c:0x25]
+
+                    # get req ips & ports
+                    self.req_src_port = req_udp_header[0x00] * \
+                        256 + req_udp_header[0x01]
+                    self.req_dest_port = req_udp_header[0x02] * \
+                        256 + req_udp_header[0x03]
+            else:
+                print("ICMP type unacounted for: {}".format(self.type))
 
         # otherwise unrecognized packet
         else:
             raise PacketError('Unanticipated packet protocol')
 
-    def add_frag(self, frag_packet):
-        self.frags.append(frag_packet)
+    def is_complete(self):
+        # if last packet has been recieved
+        print(self.total_len)
+        print(sum([len(frag.data) for frag in self.fragments]))
+        if self.total_len is not None:
+            # if all fragments have been gathered
+            if sum([len(frag.data) for frag in self.fragments]) == self.total_len:
+                return True
+        return False
 
     def get_sig(self):
         return self.id
