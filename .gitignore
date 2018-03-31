@@ -4,4 +4,4 @@ docs.html
 pcapy-master/**/*
 .vscode
 *.zip
-
+__pycache__

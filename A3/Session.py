@@ -95,20 +95,20 @@ class Session:
         if (new_packet.protocol == Protocol.UDP or (
             new_packet.protocol == Protocol.ICMP and new_packet.type == Type.ECHO
         )):
-            if new_packet.get_sig() in self.traces:
+            if new_packet.get_trace_sig() in self.traces:
                 print('Error: duplicate UDP packet probe')
-                self.traces[new_packet.get_sig()].add_probe(new_packet)
+                self.traces[new_packet.get_trace_sig()].add_probe(new_packet)
             # If new trace must created
             else:
                 self.traces.update({
-                    new_packet.get_sig(): Trace(
+                    new_packet.get_trace_sig(): Trace(
                         new_packet, self.ref_time)
                 })
-                self.trace_order.append(new_packet.get_sig())
+                self.trace_order.append(new_packet.get_trace_sig())
 
         elif new_packet.protocol == Protocol.ICMP and new_packet.type == Type.TIME_EXCEEDED:
-            if new_packet.req_sig in [trace.get_sig() for trace in self.traces.values()]:
-                self.traces[new_packet.get_req_sig()].add_resp(new_packet)
+            if new_packet.get_trace_sig() in [trace.get_sig() for trace in self.traces.values()]:
+                self.traces[new_packet.get_trace_sig()].add_resp(new_packet)
             else:
                 print("Error: ICMP receieved for nonexistant probe")
-                print(new_packet.req_sig)
+                print(new_packet.get_trace_sig())

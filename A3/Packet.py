@@ -8,6 +8,10 @@ class Packet:
         header = get_bytes(header_bstr)
         ip_header = header[0x0e:0x22]
         self.time = time[0] * 1000 + time[1] * 0.001
+        self.id = ip_header[0x04] * 256 + ip_header[0x05]
+        self.flags = ip_header[0x06]
+        self.frags = []
+        self.req_seq = None
 
         try:
             self.protocol = Protocol(ip_header[9])
@@ -27,33 +31,26 @@ class Packet:
             if self.dest_port < 33434 or self.dest_port > 33529:
                 raise PacketError('Port out of range, undesirable packet')
 
-            self.sig = get_udp_sig(self.src_ip, self.dest_ip,
-                                   self.src_port, self.dest_port)
-
         # if packet is ICMP
         elif self.protocol == Protocol.ICMP:
             icmp_header = header[0x22:]
-
-            self.type = Type(icmp_header[0x00])
-
-            req_ip_header = icmp_header[0x08:0x1c]
-            self.req_src_ip = req_ip_header[0x0c:0x10]
-            self.req_dest_ip = req_ip_header[0x10:0x14]
-
-            req_icmp_header = icmp_header[0x1c:]
+            try:
+                self.type = Type(icmp_header[0x00])
+            except:
+                print('oups icmp packet with unexpected type')
 
             if self.type == Type.ECHO:
                 self.seq = icmp_header[0x06] * 256 + icmp_header[0x07]
-                self.sig = get_icmp_sig(self.src_ip, self.dest_ip, self.seq)
             elif self.type == Type.TIME_EXCEEDED:
-                if req_icmp_header[0x00] == 0x08:
+                req_ip_header = icmp_header[0x08:0x1c]
+                req_icmp_header = icmp_header[0x1c:]
+                self.req_id = req_ip_header[0x04] * 256 + req_ip_header[0x05]
+                self.req_src_ip = req_ip_header[0x0c:0x10]
+                self.req_dest_ip = req_ip_header[0x10:0x14]
+                if req_icmp_header[0x00] == Type.ECHO.value:
                     # break out req headers from icmp response
-                    self.sig = get_ips_sig((self.src_ip, self.dest_ip))
                     self.req_seq = req_icmp_header[-2] * \
                         256 + req_icmp_header[-1]
-                    self.req_sig = get_icmp_sig(
-                        self.req_src_ip, self.req_dest_ip, self.req_seq)
-
                 else:
                     # break out req headers from icmp response
                     req_udp_header = icmp_header[0x1c:0x25]
@@ -64,10 +61,6 @@ class Packet:
                     self.req_dest_port = req_udp_header[0x02] * \
                         256 + req_udp_header[0x03]
 
-                    self.sig = get_ips_sig((self.src_ip, self.dest_ip))
-
-                    self.req_sig = get_udp_sig(self.req_src_ip, self.req_dest_ip,
-                                               self.req_src_port, self.req_dest_port)
             else:
                 print("ICMP type unacounted for: {}".format(self.type))
 
@@ -75,8 +68,23 @@ class Packet:
         else:
             raise PacketError('Unanticipated packet protocol')
 
+    def add_frag(self, frag_packet):
+        self.frags.append(frag_packet)
+
     def get_sig(self):
-        return self.sig
+        return self.id
 
     def get_req_sig(self):
-        return self.req_sig
+        return self.req_id
+
+    def get_trace_sig(self):
+        if self.protocol == Protocol.UDP:
+            return get_udp_sig(self.src_ip, self.src_port)
+        elif self.protocol == Protocol.ICMP:
+            if self.type == Type.ECHO:
+                return get_icmp_sig(self.src_ip, self.seq)
+            elif self.type == Type.TIME_EXCEEDED:
+                if self.req_seq:
+                    return get_icmp_sig(self.req_src_ip, self.req_seq)
+                else:
+                    return get_udp_sig(self.req_src_ip, self.req_src_port)
