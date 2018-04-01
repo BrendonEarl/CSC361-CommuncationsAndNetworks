@@ -1,3 +1,8 @@
+"""
+Fragment class to represent a fragment of a datagram/packet
+found in a pcap or pcapng file
+"""
+
 from utils import get_bytes
 
 
@@ -21,6 +26,7 @@ class Fragment:
         self.dest_ip = self._ipv4[0x10:0x14]
 
     def is_last_fragment(self):
+        """Indicate if fragment is flagged as last"""
         if self.flags == 0x20:
             return True
         return False

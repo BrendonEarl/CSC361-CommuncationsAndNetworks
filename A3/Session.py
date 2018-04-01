@@ -1,6 +1,11 @@
+"""
+Session class to represent a series of traces and packets
+found in a single pcap or pcapng file
+"""
+
 import statistics
 
-from utils import Platform, Protocol, Type, get_ips_sig, is_frag, get_frag_id, get_bytes
+from utils import Protocol, Type, get_ips_sig
 from Trace import Trace
 from Packet import Packet
 from Fragment import Fragment

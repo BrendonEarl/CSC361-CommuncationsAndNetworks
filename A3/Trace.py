@@ -1,4 +1,9 @@
-from utils import Platform, Protocol, Type, get_udp_sig, get_icmp_sig, get_ips_sig
+"""
+Trace class to represent a transaction between server and client
+comprised of packets found in a pcap or pcapng file
+"""
+
+from utils import Platform, Protocol, get_udp_sig, get_icmp_sig, get_ips_sig
 
 
 class Trace:
@@ -40,6 +45,7 @@ class Trace:
         return output
 
     def get_ips(self):
+        """Get src and dst ips in trace"""
         if self.probe_packet is not None and self.resp_packet is not None:
             return (self.probe_packet.src_ip, self.resp_packet.src_ip)
         elif self.probe_packet is not None:
@@ -47,6 +53,7 @@ class Trace:
         return (None, None)
 
     def get_ports(self):
+        """Get src and dst ips in trace"""
         if self.platform == Platform.LINUX:
             if self.probe_packet is not None and self.resp_packet is not None:
                 return (self.probe_packet.src_port, self.resp_packet.src_port)
@@ -62,9 +69,11 @@ class Trace:
             return (None, None)
 
     def get_sig(self):
+        """Get trace signature"""
         return self.sig
 
     def get_ips_sig(self):
+        """Get ips signature"""
         return get_ips_sig(self.get_ips())
 
     def get_duration(self):
@@ -74,6 +83,7 @@ class Trace:
         return self.end_time - self.start_time
 
     def is_complete(self):
+        """Check if trace has probe and response"""
         if self.probe_packet is not None and self.resp_packet is not None:
             return True
         return False

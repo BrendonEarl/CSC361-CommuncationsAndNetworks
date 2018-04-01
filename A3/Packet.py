@@ -1,4 +1,9 @@
-from utils import PacketError, Platform, Protocol, Type, get_udp_sig, get_icmp_sig, get_ips_sig, get_bytes
+"""
+Packet class to represent a datagram/packet combined from
+one or more fragments found in a pcap or pcapng file
+"""
+
+from utils import PacketError, Protocol, Type, get_udp_sig, get_icmp_sig
 
 
 class Packet:
@@ -23,6 +28,7 @@ class Packet:
         self.add_frag(fragment)
 
     def add_frag(self, fragment):
+        """Add fragment to packet & update packet state"""
         self.fragments.append(fragment)
         # if last fragment
         if fragment.flags == 0x00:
@@ -31,6 +37,7 @@ class Packet:
             self.assemble_packet()
 
     def assemble_packet(self):
+        """Assemble data from various fragments part of packet"""
         data = []
         for frag in self.fragments:
             data.extend(frag.data)
@@ -84,6 +91,7 @@ class Packet:
             raise PacketError('Unanticipated packet protocol')
 
     def is_complete(self):
+        """Check if packet is considered complete"""
         # if last packet has been recieved
         print(self.total_len)
         frags_data_len = sum([len(frag.data)
@@ -95,12 +103,15 @@ class Packet:
         return False
 
     def get_sig(self):
+        """Get packet signature"""
         return self.id
 
     def get_req_sig(self):
+        """Get packet's corresponding request signature"""
         return self.req_id
 
     def get_trace_sig(self):
+        """Get related traces signature given information in the packet"""
         if self.protocol == Protocol.UDP:
             return get_udp_sig(self.src_ip, self.src_port)
         elif self.protocol == Protocol.ICMP:
