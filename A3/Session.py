@@ -5,6 +5,7 @@ found in a single pcap or pcapng file
 
 import statistics
 
+from config import DEV_ENV
 from utils import Protocol, Type, get_ips_sig
 from Trace import Trace
 from Packet import Packet
@@ -127,7 +128,9 @@ class Session:
                 if packet.get_trace_sig() in [trace.get_sig() for trace in self.traces.values()]:
                     self.traces[packet.get_trace_sig()].add_resp(packet)
                 else:
-                    print("Error: ICMP receieved for nonexistant probe")
-                    print(packet.get_trace_sig())
+                    if DEV_ENV:
+                        print("Error: ICMP receieved for nonexistant probe")
+                        print(packet.get_trace_sig())
             else:
-                print("Protocol not savable in traces")
+                if DEV_ENV:
+                    print("Protocol not savable in traces")

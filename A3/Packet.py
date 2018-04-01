@@ -3,6 +3,7 @@ Packet class to represent a datagram/packet combined from
 one or more fragments found in a pcap or pcapng file
 """
 
+from config import DEV_ENV
 from utils import PacketError, Protocol, Type, get_udp_sig, get_icmp_sig
 
 
@@ -58,7 +59,8 @@ class Packet:
             try:
                 self.type = Type(icmp_header[0x00])
             except:
-                print('oups icmp packet with unexpected type')
+                if DEV_ENV:
+                    print('oups icmp packet with unexpected type')
                 raise PacketError('ICMP packet with unexpected type')
 
             if self.type == Type.ECHO:
@@ -84,7 +86,8 @@ class Packet:
                     self.req_dest_port = req_udp_header[0x02] * \
                         256 + req_udp_header[0x03]
             else:
-                print("ICMP type unacounted for: {}".format(self.type))
+                if DEV_ENV:
+                    print("ICMP type unacounted for: {}".format(self.type))
 
         # otherwise unrecognized packet
         else:
@@ -93,7 +96,6 @@ class Packet:
     def is_complete(self):
         """Check if packet is considered complete"""
         # if last packet has been recieved
-        print(self.total_len)
         frags_data_len = sum([len(frag.data)
                               for frag in self.fragments])
         if self.total_len is not None:

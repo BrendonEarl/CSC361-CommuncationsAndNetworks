@@ -6,6 +6,7 @@ with a series of sessions within, each tracking the packets apart of each
 """
 import sys
 import pcapy
+from config import DEV_ENV
 from utils import PacketError
 from Session import Session
 
@@ -27,6 +28,7 @@ if __name__ == '__main__':
         try:
             SESSION.consume_packet(HEADER_DATA, HEADER_INFO.getts())
         except PacketError as error:
-            print(error.message)
+            if DEV_ENV:
+                print(error.message)
 
     print(SESSION)

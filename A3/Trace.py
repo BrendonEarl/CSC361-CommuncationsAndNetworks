@@ -3,6 +3,7 @@ Trace class to represent a transaction between server and client
 comprised of packets found in a pcap or pcapng file
 """
 
+from config import DEV_ENV
 from utils import Platform, Protocol, get_udp_sig, get_icmp_sig, get_ips_sig
 
 
@@ -62,10 +63,12 @@ class Trace:
             return (None, None)
 
         elif self.platform == Platform.WIN:
-            print("get_ports request made on windows trace, no are set")
+            if DEV_ENV:
+                print("get_ports request made on windows trace, no are set")
             return (None, None)
         else:
-            print("get_ports request made on trace without platform set")
+            if DEV_ENV:
+                print("get_ports request made on trace without platform set")
             return (None, None)
 
     def get_sig(self):
@@ -95,7 +98,8 @@ class Trace:
         """Add packet as probe"""
         # check probe follows appropriate protocol
         if packet.protocol != Protocol.UDP and packet.protocol != Protocol.ICMP:
-            print("Error: probe of protocols UDP or ICMP")
+            if DEV_ENV:
+                print("Error: probe of protocols UDP or ICMP")
         if self.probe_packet is None:
             self.start_time = packet.time
             self.probe_packet = packet
@@ -110,12 +114,14 @@ class Trace:
         """Add packet as response"""
         # add packet as response
         if packet.protocol != Protocol.ICMP:
-            print("Error: probe not of protocol ICMP")
+            if DEV_ENV:
+                print("Error: probe not of protocol ICMP")
         elif packet.req_src_ip not in self.get_ips():
-            print("Wrong Trace:")
-            print("Attempted ip: {}".format(packet.req_src_ip))
-            print("On trace between {} and {}".format(
-                self.get_ips()[0], self.get_ips()[1]))
+            if DEV_ENV:
+                print("Wrong Trace:")
+                print("Attempted ip: {}".format(packet.req_src_ip))
+                print("On trace between {} and {}".format(
+                    self.get_ips()[0], self.get_ips()[1]))
             return
         self.ips = (packet.req_src_ip, packet.src_ip)
         self.end_time = packet.time
