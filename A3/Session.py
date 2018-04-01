@@ -35,11 +35,11 @@ class Session:
         for trace in complete_traces:
             if trace.get_ips() not in complete_trace_ips:
                 complete_trace_ips.append(trace.get_ips())
-                complete_trace_rtts[trace.get_ips_sig()] = [
-                    trace.get_duration()]
+                complete_trace_rtts[trace.get_ips_sig()
+                                    ] = trace.get_durations()
             else:
-                complete_trace_rtts[trace.get_ips_sig()].append(
-                    trace.get_duration())
+                complete_trace_rtts[trace.get_ips_sig()].extend(
+                    trace.get_durations())
 
         # Output
         # summarize routers
@@ -72,6 +72,16 @@ class Session:
         for proto in unique_protos:
             output += "\t {}: {}\n".format(proto.value, proto.name)
         output += "\n"
+
+        # summarize fragment info
+
+        for index, trace in enumerate(complete_traces):
+            output += "The number of fragments created from the original datagram {} is: {}\n".format(
+                "D{}".format(index), len(trace.get_probe_frags())
+            )
+            output += "The offset of the last fragment is: {}\n\n".format(
+                trace.get_probe_frags()[-1].offset
+            )
 
         # summarize rtts
         for ips in complete_trace_ips:

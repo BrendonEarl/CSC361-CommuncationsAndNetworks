@@ -76,11 +76,14 @@ class Trace:
         """Get ips signature"""
         return get_ips_sig(self.get_ips())
 
-    def get_duration(self):
-        """Return duration of trace"""
+    def get_durations(self):
+        """Return duration of trace for each fragment"""
         if self.end_time is None:
-            return None
-        return self.end_time - self.start_time
+            return [None]
+        return [self.end_time - frag.time for frag in self.probe_packet.fragments]
+
+    def get_probe_frags(self):
+        return self.probe_packet.fragments
 
     def is_complete(self):
         """Check if trace has probe and response"""
