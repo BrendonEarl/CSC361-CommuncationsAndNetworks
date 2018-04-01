@@ -47,7 +47,7 @@ class Session:
         output += "The IP address of the source node: {}\n".format(
             ".".join(map(str, complete_trace_ips[0][0])))
         output += "The IP address of the ultimate destination: {}\n".format(
-            ".".join(map(str, complete_trace_ips[-1][1])))
+            ".".join(map(str, complete_traces[0].probe_packet.dest_ip)))
         output += "The IP addresses of the intermediate destination nodes:\n"
         for index, ips in enumerate(complete_trace_ips):
             output += '\trouter {}: {}'.format(index + 1,
@@ -76,9 +76,9 @@ class Session:
         # summarize fragment info
 
         for index, trace in enumerate(complete_traces):
+            num_frags = len(trace.get_probe_frags())
             output += "The number of fragments created from the original datagram {} is: {}\n".format(
-                "D{}".format(index), len(trace.get_probe_frags())
-            )
+                "D{}".format(index), (0 if num_frags == 1 else num_frags))
             output += "The offset of the last fragment is: {}\n\n".format(
                 trace.get_probe_frags()[-1].offset
             )
