@@ -86,10 +86,11 @@ class Packet:
     def is_complete(self):
         # if last packet has been recieved
         print(self.total_len)
-        print(sum([len(frag.data) for frag in self.fragments]))
+        frags_data_len = sum([len(frag.data)
+                              for frag in self.fragments])
         if self.total_len is not None:
             # if all fragments have been gathered
-            if sum([len(frag.data) for frag in self.fragments]) == self.total_len:
+            if frags_data_len == self.total_len:
                 return True
         return False
 

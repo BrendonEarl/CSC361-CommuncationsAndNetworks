@@ -14,7 +14,7 @@ class Fragment:
         self.len = self._ipv4[0x02] * 256 + self._ipv4[0x03]
         self.id = self._ipv4[0x04] * 256 + self._ipv4[0x05]
         self.flags = self._ipv4[0x06] & 0xe0
-        self.offset = (self._ipv4[0x06] & 0x1f) * 256 + self._ipv4[0x07]
+        self.offset = ((self._ipv4[0x06] & 0x1f) * 256 + self._ipv4[0x07]) * 8
         self.ttl = self._ipv4[0x08]
         self.proto = self._ipv4[0x09]
         self.src_ip = self._ipv4[0x0c:0x10]
